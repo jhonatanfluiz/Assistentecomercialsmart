@@ -48,34 +48,55 @@ export async function processarImportacao(dados: LinhaImportada[], fabricante: s
     }
 
     // Preparar os dados para inserção adicionando fabricante e mes_referencia em todas as linhas
-    const dadosParaInserir = dados.map(linha => ({
-      fabricante: fabricante,
-      mes_referencia: mesReferencia,
-      status: linha.status,
-      loja: linha.loja,
-      zona: linha.zona,
-      periodo_analisado: linha.periodo_analisado,
-      codigo: linha.codigo,
-      descricao: linha.descricao,
-      caixa_master: linha.caixa_master,
-      familia: linha.familia,
-      estoque_geral: linha.estoque_geral,
-      inventario: linha.inventario,
-      devolucoes: linha.devolucoes,
-      entradas_deposito: linha.entradas_deposito,
-      requisicoes: linha.requisicoes,
-      requisicoes_abdo: linha.requisicoes_abdo,
-      vendas: linha.vendas,
-      estoque_loja: linha.estoque_loja,
-      pedidos: linha.pedidos,
-      entradas_loja: linha.entradas_loja,
-      prioridade: linha.prioridade,
-      comentario: linha.comentario,
-      total: linha.total,
-    }));
+    const map = new Map<string, any>();
+
+    for (const linha of dados) {
+      const key = `${linha.codigo}_${linha.loja}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          fabricante: fabricante,
+          mes_referencia: mesReferencia,
+          status: linha.status,
+          loja: linha.loja,
+          zona: linha.zona,
+          periodo_analisado: linha.periodo_analisado,
+          codigo: linha.codigo,
+          descricao: linha.descricao,
+          caixa_master: linha.caixa_master,
+          familia: linha.familia,
+          estoque_geral: linha.estoque_geral,
+          inventario: linha.inventario,
+          devolucoes: linha.devolucoes,
+          entradas_deposito: linha.entradas_deposito,
+          requisicoes: linha.requisicoes,
+          requisicoes_abdo: linha.requisicoes_abdo,
+          vendas: Number(linha.vendas) || 0,
+          estoque_loja: Number(linha.estoque_loja) || 0,
+          pedidos: linha.pedidos,
+          entradas_loja: linha.entradas_loja,
+          prioridade: linha.prioridade,
+          comentario: linha.comentario,
+          total: linha.total,
+        });
+      } else {
+        // Se já existe, soma as vendas e mantém o maior estoque para não perder dados da filial
+        const existente = map.get(key);
+        existente.vendas += (Number(linha.vendas) || 0);
+        existente.estoque_loja = Math.max(existente.estoque_loja, Number(linha.estoque_loja) || 0);
+      }
+    }
+
+    const dadosParaInserir = Array.from(map.values());
+
+    // Para evitar duplicidade se o usuário importar a mesma planilha 2 vezes,
+    // deletamos os dados anteriores desse mesmo fabricante e mês de referência.
+    await supabase
+      .from('historico_estoque_vendas')
+      .delete()
+      .eq('fabricante', fabricante)
+      .eq('mes_referencia', mesReferencia);
 
     // Inserção em lotes no Supabase
-    // O Supabase suporta inserção de array direto
     const { error } = await supabase
       .from('historico_estoque_vendas')
       .insert(dadosParaInserir);
@@ -130,14 +151,48 @@ export async function processarImportacaoEntradas(dados: LinhaEntrada[]) {
       return { sucesso: false, erro: "Nenhum dado válido para importar." };
     }
 
-    const dadosParaInserir = dados.map(linha => ({
-      codigo: String(linha.codigo).trim(),
-      descricao: linha.descricao,
-      fabricante: linha.fabricante,
-      fornecedor: linha.fornecedor,
-      data_movimento: parseDateBR(linha.data_movimento),
-      quantidade: linha.quantidade,
-    }));
+    // Usar um Map para unificar linhas que tenham exatamente o mesmo código e mesma data
+    // Isso evita duplicar a entrada caso a planilha tenha linhas repetidas
+    const map = new Map<string, any>();
+
+    for (const linha of dados) {
+      const codigoStr = String(linha.codigo).trim();
+      const dataMov = parseDateBR(linha.data_movimento);
+      const qtd = Number(linha.quantidade) || 0;
+      
+      const key = `${codigoStr}_${dataMov}`;
+      
+      if (!map.has(key)) {
+        map.set(key, {
+          codigo: codigoStr,
+          descricao: linha.descricao,
+          fabricante: linha.fabricante,
+          fornecedor: linha.fornecedor,
+          data_movimento: dataMov,
+          quantidade: qtd,
+        });
+      } else {
+        // Se já tem entrada no mesmo dia para o mesmo produto, somamos as quantidades
+        const existente = map.get(key);
+        existente.quantidade += qtd;
+      }
+    }
+
+    const dadosParaInserir = Array.from(map.values());
+
+    // Como as entradas não têm "mês de referência", a forma mais limpa de evitar duplicação 
+    // de reimportação sem apagar o histórico é apagar as entradas dos códigos contidos nesta planilha.
+    // Atenção: Isso assume que a planilha de entradas enviada contém sempre o retrato completo ou as entradas mais recentes.
+    // Vamos fazer isso em lotes se necessário, mas primeiro pegamos os códigos únicos
+    const codigosUnicos = Array.from(new Set(dadosParaInserir.map(d => d.codigo)));
+    
+    if (codigosUnicos.length > 0) {
+      // Deleta as entradas antigas desses mesmos códigos para não ficar duplicando
+      await supabase
+        .from('historico_entradas')
+        .delete()
+        .in('codigo', codigosUnicos);
+    }
 
     const { error } = await supabase
       .from('historico_entradas')
@@ -148,12 +203,13 @@ export async function processarImportacaoEntradas(dados: LinhaEntrada[]) {
       throw error;
     }
 
+    // Grava log
     await supabase.from('logs').insert({
-      acao: 'Importação de Planilha de Entradas',
-      detalhes: { linhas_processadas: dados.length }
+      acao: 'Importação de Entradas',
+      detalhes: { linhas_processadas: dados.length, linhas_inseridas: dadosParaInserir.length }
     });
 
-    return { sucesso: true, mensagem: `${dados.length} registros de entrada inseridos com sucesso.` };
+    return { sucesso: true, mensagem: `${dadosParaInserir.length} registros (após remoção de duplicatas) inseridos com sucesso.` };
   } catch (error: any) {
     console.error("Erro na importação de entradas:", error);
     return { sucesso: false, erro: error.message || "Erro desconhecido" };
