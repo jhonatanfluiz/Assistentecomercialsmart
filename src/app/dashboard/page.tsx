@@ -27,7 +27,7 @@ import {
   Legend, 
   ResponsiveContainer 
 } from 'recharts';
-import { getDashboardMetrics, getSalesTrendChart, DashboardFiltros } from '@/actions/dashboard';
+import { getDashboardMetrics, getSalesTrendChart, getFabricantes, DashboardFiltros } from '@/actions/dashboard';
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<any>(null);
@@ -35,17 +35,20 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [filtros, setFiltros] = useState<DashboardFiltros>({ periodo: '90' });
   const [activeDetail, setActiveDetail] = useState<string | null>(null);
+  const [fabricantesLista, setFabricantesLista] = useState<string[]>([]);
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       try {
-        const [m, c] = await Promise.all([
+        const [m, c, f] = await Promise.all([
           getDashboardMetrics(filtros),
-          getSalesTrendChart(filtros)
+          getSalesTrendChart(filtros),
+          getFabricantes()
         ]);
         setMetrics(m);
         setChartData(c);
+        setFabricantesLista(f);
       } catch (error) {
         console.error("Erro", error);
       }
@@ -100,8 +103,9 @@ export default function Dashboard() {
               <select name="fabricante" onChange={handleFilterChange} 
                 className="appearance-none bg-slate-900/50 hover:bg-slate-900/80 border border-slate-700/50 text-slate-200 text-sm rounded-xl px-4 py-2.5 pr-10 outline-none transition-all cursor-pointer focus:ring-2 focus:ring-blue-500/50">
                 <option value="">Todos Fabricantes</option>
-                <option value="fab1">Fabricante A</option>
-                <option value="fab2">Fabricante B</option>
+                {fabricantesLista.map(fab => (
+                  <option key={fab} value={fab}>{fab}</option>
+                ))}
               </select>
               <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-slate-200 transition-colors" />
             </div>
@@ -172,75 +176,75 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
             
             <PremiumCard 
-              title="Dinheiro Escondido" 
-              value={`R$ ${metrics.dinheiroEscondido.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`}
-              subtitle={metrics.dinheiroEscondido.descricao}
-              trend={metrics.dinheiroEscondido.variacao}
+              title="Estoque Total (CD + Loja)" 
+              value={metrics.estoqueGeralTotal.valor.toLocaleString('pt-BR')}
+              subtitle={metrics.estoqueGeralTotal.descricao}
+              trend={metrics.estoqueGeralTotal.variacao}
+              icon={<PackageSearch className="text-blue-400" size={24} />}
+              gradient="from-blue-500/10 to-indigo-500/5"
+              borderColor="border-blue-500/20"
+              iconBg="bg-blue-500/10"
+              onClick={() => setActiveDetail('Estoque Total')}
+            />
+
+            <PremiumCard 
+              title="Volume de Vendas" 
+              value={metrics.vendasTotais.valor.toLocaleString('pt-BR')}
+              subtitle={metrics.vendasTotais.descricao}
+              trend={metrics.vendasTotais.variacao}
               icon={<DollarSign className="text-emerald-400" size={24} />}
               gradient="from-emerald-500/10 to-teal-500/5"
               borderColor="border-emerald-500/20"
               iconBg="bg-emerald-500/10"
-              onClick={() => setActiveDetail('Dinheiro Escondido')}
+              onClick={() => setActiveDetail('Volume de Vendas')}
             />
 
             <PremiumCard 
-              title="Potencial Recuperável" 
-              value={`R$ ${metrics.potencialRecuperavel.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`}
-              subtitle={metrics.potencialRecuperavel.descricao}
-              trend={metrics.potencialRecuperavel.variacao}
-              icon={<Activity className="text-blue-400" size={24} />}
-              gradient="from-blue-500/10 to-indigo-500/5"
-              borderColor="border-blue-500/20"
-              iconBg="bg-blue-500/10"
-              onClick={() => setActiveDetail('Potencial Recuperável')}
+              title="Giro de Estoque" 
+              value={`${metrics.giroDeEstoque.valor}%`}
+              subtitle={metrics.giroDeEstoque.descricao}
+              trend={metrics.giroDeEstoque.variacao}
+              icon={<Activity className={Number(metrics.giroDeEstoque.valor) > 20 ? "text-emerald-400" : "text-amber-400"} size={24} />}
+              gradient={Number(metrics.giroDeEstoque.valor) > 20 ? "from-emerald-500/10 to-transparent" : "from-amber-500/10 to-transparent"}
+              borderColor={Number(metrics.giroDeEstoque.valor) > 20 ? "border-emerald-500/20" : "border-amber-500/20"}
+              iconBg={Number(metrics.giroDeEstoque.valor) > 20 ? "bg-emerald-500/10" : "bg-amber-500/10"}
+              onClick={() => setActiveDetail('Giro de Estoque')}
             />
 
             <PremiumCard 
-              title="Saúde da Carteira" 
-              value={`${metrics.saudeCarteira.valor}%`}
-              subtitle={metrics.saudeCarteira.descricao}
-              trend={metrics.saudeCarteira.variacao}
-              icon={<HeartPulse className={metrics.saudeCarteira.valor > 70 ? "text-emerald-400" : "text-rose-400"} size={24} />}
-              gradient={metrics.saudeCarteira.valor > 70 ? "from-emerald-500/10 to-transparent" : "from-rose-500/10 to-transparent"}
-              borderColor={metrics.saudeCarteira.valor > 70 ? "border-emerald-500/20" : "border-rose-500/20"}
-              iconBg={metrics.saudeCarteira.valor > 70 ? "bg-emerald-500/10" : "bg-rose-500/10"}
-              onClick={() => setActiveDetail('Saúde da Carteira')}
-            />
-
-            <PremiumCard 
-              title="Produtos Desaparecendo" 
-              value={metrics.produtosDesaparecendo.valor}
-              subtitle={metrics.produtosDesaparecendo.descricao}
-              trend={metrics.produtosDesaparecendo.variacao}
-              icon={<TrendingDown className="text-amber-400" size={24} />}
-              gradient="from-amber-500/10 to-orange-500/5"
-              borderColor="border-amber-500/20"
-              iconBg="bg-amber-500/10"
-              onClick={() => setActiveDetail('Produtos Desaparecendo')}
-            />
-
-            <PremiumCard 
-              title="Produtos em Queda" 
-              value={metrics.produtosEmQueda.valor}
-              subtitle={metrics.produtosEmQueda.descricao}
-              trend={metrics.produtosEmQueda.variacao}
+              title="Produtos Sem Giro" 
+              value={metrics.produtosSemGiro.valor}
+              subtitle={metrics.produtosSemGiro.descricao}
+              trend={metrics.produtosSemGiro.variacao}
               icon={<AlertOctagon className="text-rose-400" size={24} />}
               gradient="from-rose-500/10 to-red-500/5"
               borderColor="border-rose-500/20"
               iconBg="bg-rose-500/10"
-              onClick={() => setActiveDetail('Produtos em Queda')}
+              onClick={() => setActiveDetail('Produtos Sem Giro')}
             />
 
             <PremiumCard 
-              title="Sem Compra > 30 Dias" 
-              value={metrics.semCompraAcima30Dias.valor}
-              subtitle={metrics.semCompraAcima30Dias.descricao}
-              trend={metrics.semCompraAcima30Dias.variacao}
-              icon={<Clock className="text-purple-400" size={24} />}
+              title="Requisições Ativas" 
+              value={metrics.requisicoesAtivas.valor}
+              subtitle={metrics.requisicoesAtivas.descricao}
+              trend={metrics.requisicoesAtivas.variacao}
+              icon={<ShoppingCart className="text-purple-400" size={24} />}
               gradient="from-purple-500/10 to-fuchsia-500/5"
               borderColor="border-purple-500/20"
               iconBg="bg-purple-500/10"
-              onClick={() => setActiveDetail('Sem Compra > 30 Dias')}
+              onClick={() => setActiveDetail('Requisições')}
+            />
+
+            <PremiumCard 
+              title="Devoluções" 
+              value={metrics.devolucoesTotal.valor}
+              subtitle={metrics.devolucoesTotal.descricao}
+              trend={metrics.devolucoesTotal.variacao}
+              icon={<TrendingDown className="text-amber-400" size={24} />}
+              gradient="from-amber-500/10 to-orange-500/5"
+              borderColor="border-amber-500/20"
+              iconBg="bg-amber-500/10"
+              onClick={() => setActiveDetail('Devoluções')}
             />
 
           </div>
