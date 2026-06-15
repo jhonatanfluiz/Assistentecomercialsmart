@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { getSupabaseClient } from '@/lib/supabaseClient';
-import { PackageSearch, ChevronLeft, Calendar, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { PackageSearch, ChevronLeft, Calendar, FileText, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 type Pedido = {
@@ -22,6 +22,43 @@ export default function PedidosSalvosPage() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const excluirPedido = async (e: React.MouseEvent, pedidoId: string) => {
+    e.stopPropagation();
+    if (!window.confirm("Tem certeza que deseja excluir o pedido completo? Esta ação não pode ser desfeita.")) return;
+    
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.from('pedidos_salvos').delete().eq('id', pedidoId);
+    
+    if (error) {
+      console.error("Erro ao excluir pedido:", error);
+      alert("Erro ao excluir o pedido.");
+    } else {
+      setPedidos(prev => prev.filter(p => p.id !== pedidoId));
+    }
+  };
+
+  const excluirItem = async (pedidoId: string, itemId: string) => {
+    if (!window.confirm("Deseja remover apenas este item do pedido?")) return;
+    
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.from('pedido_itens').delete().eq('id', itemId);
+    
+    if (error) {
+      console.error("Erro ao excluir item:", error);
+      alert("Erro ao excluir o item.");
+    } else {
+      setPedidos(prev => prev.map(p => {
+        if (p.id === pedidoId) {
+          return {
+            ...p,
+            pedido_itens: p.pedido_itens.filter(i => i.id !== itemId)
+          };
+        }
+        return p;
+      }));
+    }
+  };
 
   useEffect(() => {
     async function carregarPedidos() {
@@ -122,8 +159,17 @@ export default function PedidosSalvosPage() {
                         <span className="block text-xl font-bold text-white">{pedido.pedido_itens.length}</span>
                         <span className="text-xs text-slate-500 uppercase tracking-wider">Itens</span>
                       </div>
-                      <div className="p-2 bg-slate-800/50 rounded-xl text-slate-400">
-                        {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={(e) => excluirPedido(e, pedido.id)}
+                          className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-colors"
+                          title="Excluir Pedido"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                        <div className="p-2 bg-slate-800/50 rounded-xl text-slate-400 pointer-events-none">
+                          {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -136,8 +182,17 @@ export default function PedidosSalvosPage() {
                         {pedido.pedido_itens.map((item) => (
                           <div key={item.id} className="bg-slate-800/30 p-4 rounded-xl border border-slate-800">
                             <div className="flex justify-between items-start mb-2">
-                              <span className="font-medium text-slate-200">{item.nome_produto}</span>
-                              <span className="bg-blue-500/20 text-blue-400 text-xs font-bold px-2 py-1 rounded-md">Qtd: {item.quantidade}</span>
+                              <span className="font-medium text-slate-200 pr-2">{item.nome_produto}</span>
+                              <div className="flex items-center gap-3 shrink-0">
+                                <span className="bg-blue-500/20 text-blue-400 text-xs font-bold px-2 py-1 rounded-md">Qtd: {item.quantidade}</span>
+                                <button 
+                                  onClick={() => excluirItem(pedido.id, item.id)}
+                                  className="text-slate-500 hover:text-red-400 transition-colors"
+                                  title="Remover Item"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
                             </div>
                             <p className="text-xs text-slate-400 italic">"{item.motivo_ia}"</p>
                           </div>

@@ -13,7 +13,8 @@ import {
   ChevronDown,
   Upload,
   ShoppingCart,
-  PackageSearch
+  PackageSearch,
+  Printer
 } from 'lucide-react';
 import Link from 'next/link';
 import { 
@@ -108,6 +109,11 @@ export default function Dashboard() {
             <Link href="/pedidos-salvos" className="ml-2 flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-all border border-slate-700">
               <PackageSearch size={16} />
               <span className="hidden sm:inline">Pedidos Salvos</span>
+            </Link>
+
+            <Link href="/clientes/123/relatorio" className="ml-2 flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-purple-500/20">
+              <Printer size={16} />
+              <span className="hidden sm:inline">Relatório</span>
             </Link>
 
             <Link href="/clientes/123/pedido" className="ml-2 flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20">
