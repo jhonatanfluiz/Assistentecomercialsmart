@@ -180,7 +180,8 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
   const { data: dadosEntradas, error: errEntradas } = await supabase
     .from('historico_entradas')
     .select('codigo, data_movimento, quantidade, fornecedor')
-    .in('codigo', codigos);
+    .in('codigo', codigos)
+    .order('data_movimento', { ascending: false });
 
   const entradasMap: Record<string, { data: string, qtd: number, fornecedor: string }> = {};
 
