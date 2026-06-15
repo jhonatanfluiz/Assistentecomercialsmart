@@ -13,25 +13,40 @@ export default function ImportarPage() {
   const [etapa, setEtapa] = useState<Etapa>('UPLOAD');
   const [arquivoInfo, setArquivoInfo] = useState<{ nome: string; linhas: any[] } | null>(null);
   
+  // Metadados Globais do Upload
+  const [nomeFabricante, setNomeFabricante] = useState('');
+  const [mesReferencia, setMesReferencia] = useState('');
+  
   // Mapeamento: Coluna Banco -> Coluna Planilha
   const [mapeamento, setMapeamento] = useState<Record<string, string>>({
-    fabricante: '',
-    codigo_produto: '',
-    descricao_produto: '',
-    quantidade: '',
-    valor: '',
-    data_pedido: '',
-    cliente: '',
+    status: '', loja: '', zona: '', periodo_analisado: '', codigo: '', descricao: '',
+    caixa_master: '', familia: '', estoque_geral: '', inventario: '', devolucoes: '',
+    entradas_deposito: '', requisicoes: '', requisicoes_abdo: '', vendas: '',
+    estoque_loja: '', pedidos: '', entradas_loja: '', prioridade: '', comentario: '', total: ''
   });
 
   const colunasBanco = [
-    { key: 'fabricante', label: 'Fabricante', required: true },
-    { key: 'codigo_produto', label: 'Código do Produto (SKU)', required: false },
-    { key: 'descricao_produto', label: 'Descrição do Produto', required: true },
-    { key: 'quantidade', label: 'Quantidade', required: true },
-    { key: 'valor', label: 'Valor Unitário/Total', required: true },
-    { key: 'data_pedido', label: 'Data do Pedido', required: true },
-    { key: 'cliente', label: 'Cliente (Razão Social)', required: true },
+    { key: 'status', label: 'Status', required: false },
+    { key: 'loja', label: 'Loja', required: false },
+    { key: 'zona', label: 'Zona', required: false },
+    { key: 'periodo_analisado', label: 'Período Analisado', required: false },
+    { key: 'codigo', label: 'Codigo', required: true },
+    { key: 'descricao', label: 'Descricao', required: true },
+    { key: 'caixa_master', label: 'Caixa Master', required: false },
+    { key: 'familia', label: 'Família', required: false },
+    { key: 'estoque_geral', label: 'Estoque Geral', required: false },
+    { key: 'inventario', label: 'Inventário', required: false },
+    { key: 'devolucoes', label: 'Devoluções', required: false },
+    { key: 'entradas_deposito', label: 'Entradas Depósito', required: false },
+    { key: 'requisicoes', label: 'Requisições', required: false },
+    { key: 'requisicoes_abdo', label: 'Requisições ABDO', required: false },
+    { key: 'vendas', label: 'Vendas', required: false },
+    { key: 'estoque_loja', label: 'Estoque Loja', required: false },
+    { key: 'pedidos', label: 'Pedidos', required: false },
+    { key: 'entradas_loja', label: 'Entradas Loja', required: false },
+    { key: 'prioridade', label: 'Prioridade', required: false },
+    { key: 'comentario', label: 'Comentario', required: false },
+    { key: 'total', label: 'Total', required: false },
   ];
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,18 +96,32 @@ export default function ImportarPage() {
     // Mapeia os dados brutos para o formato que a action espera
     const dadosMapeados = arquivoInfo?.linhas.map(linha => {
       return {
-        fabricante: linha[mapeamento.fabricante],
-        codigo_produto: linha[mapeamento.codigo_produto] || '',
-        descricao_produto: linha[mapeamento.descricao_produto],
-        quantidade: Number(linha[mapeamento.quantidade]),
-        valor: Number(linha[mapeamento.valor]),
-        data_pedido: linha[mapeamento.data_pedido],
-        cliente: linha[mapeamento.cliente],
+        status: linha[mapeamento.status] || '',
+        loja: linha[mapeamento.loja] || '',
+        zona: linha[mapeamento.zona] || '',
+        periodo_analisado: linha[mapeamento.periodo_analisado] || '',
+        codigo: linha[mapeamento.codigo] || '',
+        descricao: linha[mapeamento.descricao] || '',
+        caixa_master: linha[mapeamento.caixa_master] ? Number(linha[mapeamento.caixa_master]) : null,
+        familia: linha[mapeamento.familia] || '',
+        estoque_geral: linha[mapeamento.estoque_geral] ? Number(linha[mapeamento.estoque_geral]) : null,
+        inventario: linha[mapeamento.inventario] ? Number(linha[mapeamento.inventario]) : null,
+        devolucoes: linha[mapeamento.devolucoes] ? Number(linha[mapeamento.devolucoes]) : null,
+        entradas_deposito: linha[mapeamento.entradas_deposito] ? Number(linha[mapeamento.entradas_deposito]) : null,
+        requisicoes: linha[mapeamento.requisicoes] ? Number(linha[mapeamento.requisicoes]) : null,
+        requisicoes_abdo: linha[mapeamento.requisicoes_abdo] ? Number(linha[mapeamento.requisicoes_abdo]) : null,
+        vendas: linha[mapeamento.vendas] ? Number(linha[mapeamento.vendas]) : null,
+        estoque_loja: linha[mapeamento.estoque_loja] ? Number(linha[mapeamento.estoque_loja]) : null,
+        pedidos: linha[mapeamento.pedidos] ? Number(linha[mapeamento.pedidos]) : null,
+        entradas_loja: linha[mapeamento.entradas_loja] ? Number(linha[mapeamento.entradas_loja]) : null,
+        prioridade: linha[mapeamento.prioridade] || '',
+        comentario: linha[mapeamento.comentario] || '',
+        total: linha[mapeamento.total] ? Number(linha[mapeamento.total]) : null,
       };
     }) || [];
 
     try {
-      const resultado = await processarImportacao(dadosMapeados);
+      const resultado = await processarImportacao(dadosMapeados, nomeFabricante, mesReferencia);
       if (resultado.sucesso) {
         setEtapa('SUCESSO');
       } else {
@@ -124,20 +153,48 @@ export default function ImportarPage() {
         <div className="bg-slate-900 rounded-xl shadow-xl shadow-black/20 border border-slate-800 p-6 md:p-8">
           {/* ETAPA: UPLOAD */}
           {etapa === 'UPLOAD' && (
-            <div className="border-2 border-dashed border-slate-700 bg-slate-950/50 rounded-xl p-12 text-center hover:bg-slate-900 transition-colors">
-              <Upload className="mx-auto h-14 w-14 text-blue-500/60 mb-4" />
-              <p className="text-slate-300 font-medium mb-2 text-lg">Arraste sua planilha CSV ou Excel aqui</p>
-              <p className="text-sm text-slate-500 mb-6">ou clique no botão abaixo para selecionar</p>
-              <input 
-                type="file" 
-                accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-                className="hidden" 
-                id="file-upload"
-                onChange={handleFileUpload}
-              />
-              <label htmlFor="file-upload" className="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg cursor-pointer hover:bg-blue-500 font-medium transition-colors shadow-lg shadow-blue-900/20">
-                Selecionar Arquivo
-              </label>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-300 mb-2 font-medium">Nome do Fabricante</label>
+                  <input 
+                    type="text" 
+                    placeholder="Ex: TALLISMA"
+                    value={nomeFabricante}
+                    onChange={(e) => setNomeFabricante(e.target.value)}
+                    className="w-full p-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-2 font-medium">Mês de Referência</label>
+                  <input 
+                    type="month" 
+                    value={mesReferencia}
+                    onChange={(e) => setMesReferencia(e.target.value)}
+                    className="w-full p-3 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${(!nomeFabricante || !mesReferencia) ? 'border-slate-800 bg-slate-950/30 opacity-50 cursor-not-allowed' : 'border-slate-700 bg-slate-950/50 hover:bg-slate-900'}`}>
+                <Upload className="mx-auto h-14 w-14 text-blue-500/60 mb-4" />
+                <p className="text-slate-300 font-medium mb-2 text-lg">Arraste sua planilha CSV ou Excel aqui</p>
+                <p className="text-sm text-slate-500 mb-6">ou clique no botão abaixo para selecionar</p>
+                <input 
+                  type="file" 
+                  accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                  className="hidden" 
+                  id="file-upload"
+                  onChange={handleFileUpload}
+                  disabled={!nomeFabricante || !mesReferencia}
+                />
+                <label htmlFor="file-upload" className={`inline-block px-8 py-3 rounded-lg font-medium transition-colors shadow-lg ${(!nomeFabricante || !mesReferencia) ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-blue-600 text-white cursor-pointer hover:bg-blue-500 shadow-blue-900/20'}`}>
+                  Selecionar Arquivo
+                </label>
+                {(!nomeFabricante || !mesReferencia) && (
+                  <p className="text-amber-500 text-sm mt-4">Preencha o Fabricante e o Mês acima para liberar o upload.</p>
+                )}
+              </div>
             </div>
           )}
 

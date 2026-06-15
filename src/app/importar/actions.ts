@@ -2,9 +2,6 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Função utilitária para inicializar o cliente do Supabase
-// (O ideal seria utilizar @supabase/ssr com os cookies da requisição, 
-// mas para fins de arquitetura Server Action inicial, usaremos o padrão)
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -17,53 +14,84 @@ function getSupabaseClient() {
 }
 
 export type LinhaImportada = {
-  fabricante: string;
-  codigo_produto: string;
-  descricao_produto: string;
-  quantidade: number;
-  valor: number;
-  data_pedido: string;
-  cliente: string;
+  status: string;
+  loja: string;
+  zona: string;
+  periodo_analisado: string;
+  codigo: string;
+  descricao: string;
+  caixa_master: number | null;
+  familia: string;
+  estoque_geral: number | null;
+  inventario: number | null;
+  devolucoes: number | null;
+  entradas_deposito: number | null;
+  requisicoes: number | null;
+  requisicoes_abdo: number | null;
+  vendas: number | null;
+  estoque_loja: number | null;
+  pedidos: number | null;
+  entradas_loja: number | null;
+  prioridade: string;
+  comentario: string;
+  total: number | null;
 };
 
-export async function processarImportacao(dados: LinhaImportada[]) {
+export async function processarImportacao(dados: LinhaImportada[], fabricante: string, mesReferencia: string) {
   try {
     const supabase = getSupabaseClient();
     
-    // Como estamos num modelo multi-tenant e ainda não configuramos a injeção do JWT no server client,
-    // vamos assumir que precisamos do tenant_id (se houver auth real, virá do usuário logado).
-    // Para simplificar a implementação técnica requerida:
+    console.log(`Iniciando processamento de ${dados.length} linhas para ${fabricante} - ${mesReferencia}...`);
     
-    console.log(`Iniciando processamento de ${dados.length} linhas...`);
-    
-    // Aqui aconteceria o processamento em lotes (batch processing).
-    // 1. Extrair Clientes Únicos, Fabricantes Únicos, Produtos Únicos.
-    // 2. Fazer upsert (inserir ou ignorar) na tabela de Clientes, retornando IDs.
-    // 3. Fazer upsert na tabela de Fabricantes, retornando IDs.
-    // 4. Fazer upsert na tabela de Produtos, retornando IDs.
-    // 5. Inserir na tabela pedidos_importados e itens_pedido.
-    
-    // Exemplo de como a lógica de inserção ocorreria:
-    /*
-      const { data: clientesInseridos, error: erroCliente } = await supabase
-        .from('clientes')
-        .upsert(
-          clientesUnicos.map(c => ({ razao_social: c, tenant_id: MEU_TENANT_ID })), 
-          { onConflict: 'razao_social, tenant_id' }
-        )
-        .select();
-    */
-    
-    // Simulando um pequeno atraso de processamento
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
+    if (!dados || dados.length === 0) {
+      return { sucesso: false, erro: "Nenhum dado válido para importar." };
+    }
+
+    // Preparar os dados para inserção adicionando fabricante e mes_referencia em todas as linhas
+    const dadosParaInserir = dados.map(linha => ({
+      fabricante: fabricante,
+      mes_referencia: mesReferencia,
+      status: linha.status,
+      loja: linha.loja,
+      zona: linha.zona,
+      periodo_analisado: linha.periodo_analisado,
+      codigo: linha.codigo,
+      descricao: linha.descricao,
+      caixa_master: linha.caixa_master,
+      familia: linha.familia,
+      estoque_geral: linha.estoque_geral,
+      inventario: linha.inventario,
+      devolucoes: linha.devolucoes,
+      entradas_deposito: linha.entradas_deposito,
+      requisicoes: linha.requisicoes,
+      requisicoes_abdo: linha.requisicoes_abdo,
+      vendas: linha.vendas,
+      estoque_loja: linha.estoque_loja,
+      pedidos: linha.pedidos,
+      entradas_loja: linha.entradas_loja,
+      prioridade: linha.prioridade,
+      comentario: linha.comentario,
+      total: linha.total,
+    }));
+
+    // Inserção em lotes no Supabase
+    // O Supabase suporta inserção de array direto
+    const { error } = await supabase
+      .from('historico_estoque_vendas')
+      .insert(dadosParaInserir);
+
+    if (error) {
+      console.error("Erro do Supabase ao inserir:", error);
+      throw error;
+    }
+
     // Grava log
     await supabase.from('logs').insert({
-      acao: 'Importação de Planilha',
-      detalhes: { linhas_processadas: dados.length }
+      acao: 'Importação Real de Planilha de Estoque',
+      detalhes: { linhas_processadas: dados.length, fabricante, mesReferencia }
     });
 
-    return { sucesso: true, mensagem: `${dados.length} registros processados.` };
+    return { sucesso: true, mensagem: `${dados.length} registros inseridos com sucesso no banco oficial.` };
   } catch (error: any) {
     console.error("Erro na importação:", error);
     return { sucesso: false, erro: error.message || "Erro desconhecido" };
