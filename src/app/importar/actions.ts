@@ -107,6 +107,19 @@ export type LinhaEntrada = {
   quantidade: number | null;
 };
 
+function parseDateBR(dateStr: string) {
+  if (!dateStr) return null;
+  // Se for DD/MM/YYYY
+  if (dateStr.includes('/')) {
+    const parts = dateStr.split(' ')[0].split('/');
+    if (parts.length === 3) {
+      // Retorna YYYY-MM-DD
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+  }
+  return dateStr;
+}
+
 export async function processarImportacaoEntradas(dados: LinhaEntrada[]) {
   try {
     const supabase = getSupabaseClient();
@@ -122,7 +135,7 @@ export async function processarImportacaoEntradas(dados: LinhaEntrada[]) {
       descricao: linha.descricao,
       fabricante: linha.fabricante,
       fornecedor: linha.fornecedor,
-      data_movimento: linha.data_movimento,
+      data_movimento: parseDateBR(linha.data_movimento),
       quantidade: linha.quantidade,
     }));
 
