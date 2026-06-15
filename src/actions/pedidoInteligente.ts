@@ -95,7 +95,7 @@ export async function gerarPedidoInteligente(clienteId: string): Promise<Cenario
     } else {
       // Fallback caso não haja chave (Para não quebrar a tela do desenvolvedor)
       respostaJSON = baseEquilibrado.map(p => ({
-        produtoId: p.produtoId,
+        produtoId: p.id,
         motivoIA: `(Mock) Baseado na sua média de ${p.mediaQtd}, recomendamos manter este volume para não faltar estoque na ponta.`,
         nivelConfianca: 88
       }));
