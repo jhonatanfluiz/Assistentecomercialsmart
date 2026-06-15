@@ -28,7 +28,7 @@ import {
   Legend, 
   ResponsiveContainer 
 } from 'recharts';
-import { getDashboardMetrics, getSalesTrendChart, getFabricantes, getItensEstoqueZerado, DashboardFiltros, ItemZerado } from '@/actions/dashboard';
+import { getDashboardMetrics, getSalesTrendChart, getFabricantes, getItensEstoqueZerado, getProdutosSemGiroDetalhamento, DashboardFiltros, ItemZerado, ItemSemGiro } from '@/actions/dashboard';
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<any>(null);
@@ -38,21 +38,24 @@ export default function Dashboard() {
   const [activeDetail, setActiveDetail] = useState<string | null>(null);
   const [fabricantesLista, setFabricantesLista] = useState<string[]>([]);
   const [itensZerados, setItensZerados] = useState<ItemZerado[]>([]);
+  const [itensSemGiro, setItensSemGiro] = useState<ItemSemGiro[]>([]);
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       try {
-        const [m, c, f, z] = await Promise.all([
+        const [m, c, f, z, sg] = await Promise.all([
           getDashboardMetrics(filtros),
           getSalesTrendChart(filtros),
           getFabricantes(),
-          getItensEstoqueZerado(filtros)
+          getItensEstoqueZerado(filtros),
+          getProdutosSemGiroDetalhamento(filtros)
         ]);
         setMetrics(m);
         setChartData(c);
         setFabricantesLista(f);
         setItensZerados(z);
+        setItensSemGiro(sg);
       } catch (error) {
         console.error("Erro", error);
       }
@@ -184,6 +187,46 @@ export default function Dashboard() {
                               <td className="px-4 py-3">{item.dataUltimaEntrada}</td>
                               <td className="px-4 py-3 text-right font-medium">{item.qtdUltimaEntrada > 0 ? item.qtdUltimaEntrada : '-'}</td>
                               <td className="px-4 py-3 text-slate-400">{item.fornecedor}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ) : activeDetail === 'Produtos Sem Giro' ? (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <h3 className="text-xl font-bold text-slate-200 mb-6">Detalhamento: Produtos Sem Giro</h3>
+                  
+                  {itensSemGiro.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4 border border-emerald-500/20">
+                        <CheckCircle className="text-emerald-400" size={32} />
+                      </div>
+                      <p className="text-slate-400">Excelente! Não há itens parados no estoque.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-slate-700">
+                      <table className="w-full text-sm text-left text-slate-300">
+                        <thead className="text-xs text-slate-400 uppercase bg-slate-800/50 border-b border-slate-700">
+                          <tr>
+                            <th className="px-4 py-3 font-medium">Código</th>
+                            <th className="px-4 py-3 font-medium">Descrição</th>
+                            <th className="px-4 py-3 font-medium">Fabricante</th>
+                            <th className="px-4 py-3 font-medium text-right">Estoque Geral</th>
+                            <th className="px-4 py-3 font-medium text-right">Estoque Loja</th>
+                            <th className="px-4 py-3 font-medium text-right text-rose-400">Estoque Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {itensSemGiro.map((item, idx) => (
+                            <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+                              <td className="px-4 py-3 text-slate-400">{item.codigo}</td>
+                              <td className="px-4 py-3 font-medium text-slate-200">{item.descricao}</td>
+                              <td className="px-4 py-3">{item.fabricante}</td>
+                              <td className="px-4 py-3 text-right">{item.estoqueGeral}</td>
+                              <td className="px-4 py-3 text-right">{item.estoqueLoja}</td>
+                              <td className="px-4 py-3 text-right font-bold text-rose-400">{item.totalEstoque}</td>
                             </tr>
                           ))}
                         </tbody>

@@ -211,3 +211,46 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
   // Ordena por maior número de vendas (produtos que mais fazem falta)
   return resultadoFinal.sort((a, b) => b.vendasPeriodo - a.vendasPeriodo);
 }
+
+export type ItemSemGiro = {
+  codigo: string;
+  descricao: string;
+  fabricante: string;
+  estoqueGeral: number;
+  estoqueLoja: number;
+  totalEstoque: number;
+};
+
+export async function getProdutosSemGiroDetalhamento(filtros?: DashboardFiltros): Promise<ItemSemGiro[]> {
+  const supabase = getSupabaseClient();
+  
+  let query = supabase.from('historico_estoque_vendas')
+    .select('codigo, descricao, fabricante, vendas, estoque_geral, estoque_loja');
+    
+  if (filtros?.fabricante && filtros.fabricante !== '') {
+    query = query.eq('fabricante', filtros.fabricante);
+  }
+
+  const { data, error } = await query;
+  if (error || !data) return [];
+
+  const itensSemGiro = data.filter(row => {
+    const v = Number(row.vendas) || 0;
+    const eg = Number(row.estoque_geral) || 0;
+    const el = Number(row.estoque_loja) || 0;
+    return v === 0 && (eg > 0 || el > 0);
+  });
+
+  return itensSemGiro.map(item => {
+    const eg = Number(item.estoque_geral) || 0;
+    const el = Number(item.estoque_loja) || 0;
+    return {
+      codigo: item.codigo,
+      descricao: item.descricao || 'N/A',
+      fabricante: item.fabricante || 'N/A',
+      estoqueGeral: eg,
+      estoqueLoja: el,
+      totalEstoque: eg + el
+    };
+  }).sort((a, b) => b.totalEstoque - a.totalEstoque);
+}
