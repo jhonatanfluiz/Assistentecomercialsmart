@@ -97,3 +97,52 @@ export async function processarImportacao(dados: LinhaImportada[], fabricante: s
     return { sucesso: false, erro: error.message || "Erro desconhecido" };
   }
 }
+
+export type LinhaEntrada = {
+  codigo: string;
+  descricao: string;
+  fabricante: string;
+  fornecedor: string;
+  data_movimento: string;
+  quantidade: number | null;
+};
+
+export async function processarImportacaoEntradas(dados: LinhaEntrada[]) {
+  try {
+    const supabase = getSupabaseClient();
+    
+    console.log(`Iniciando processamento de ${dados.length} linhas de entradas...`);
+    
+    if (!dados || dados.length === 0) {
+      return { sucesso: false, erro: "Nenhum dado válido para importar." };
+    }
+
+    const dadosParaInserir = dados.map(linha => ({
+      codigo: String(linha.codigo).trim(),
+      descricao: linha.descricao,
+      fabricante: linha.fabricante,
+      fornecedor: linha.fornecedor,
+      data_movimento: linha.data_movimento,
+      quantidade: linha.quantidade,
+    }));
+
+    const { error } = await supabase
+      .from('historico_entradas')
+      .insert(dadosParaInserir);
+
+    if (error) {
+      console.error("Erro do Supabase ao inserir entradas:", error);
+      throw error;
+    }
+
+    await supabase.from('logs').insert({
+      acao: 'Importação de Planilha de Entradas',
+      detalhes: { linhas_processadas: dados.length }
+    });
+
+    return { sucesso: true, mensagem: `${dados.length} registros de entrada inseridos com sucesso.` };
+  } catch (error: any) {
+    console.error("Erro na importação de entradas:", error);
+    return { sucesso: false, erro: error.message || "Erro desconhecido" };
+  }
+}

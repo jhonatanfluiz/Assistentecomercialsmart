@@ -16,7 +16,7 @@ export type DashboardFiltros = {
 export async function getDashboardMetrics(filtros?: DashboardFiltros) {
   const supabase = getSupabaseClient();
   
-  let query = supabase.from('historico_estoque_vendas').select('estoque_geral, estoque_loja, vendas, devolucoes, requisicoes, entradas_loja');
+  let query = supabase.from('historico_estoque_vendas').select('codigo, estoque_geral, estoque_loja, vendas, devolucoes, requisicoes, entradas_loja');
   
   if (filtros?.fabricante && filtros.fabricante !== '') {
     query = query.eq('fabricante', filtros.fabricante);
@@ -30,7 +30,7 @@ export async function getDashboardMetrics(filtros?: DashboardFiltros) {
       estoqueGeralTotal: { valor: 0, variacao: '0%', descricao: 'Total de produtos em CD e Lojas' },
       vendasTotais: { valor: 0, variacao: '0%', descricao: 'Volume total vendido no período' },
       giroDeEstoque: { valor: 0, variacao: '0%', descricao: 'Velocidade de giro (Vendas vs Estoque)' },
-      devolucoesTotal: { valor: 0, variacao: '0%', descricao: 'Volume de produtos devolvidos' },
+      estoqueZerado: { valor: 0, variacao: '0', descricao: 'Itens com estoque zerado' },
       requisicoesAtivas: { valor: 0, variacao: '0%', descricao: 'Requisições pendentes/transferências' },
       produtosSemGiro: { valor: 0, variacao: '0', descricao: 'Itens parados no estoque' }
     };
@@ -39,7 +39,7 @@ export async function getDashboardMetrics(filtros?: DashboardFiltros) {
   let estoque_geral_sum = 0;
   let estoque_loja_sum = 0;
   let vendas_sum = 0;
-  let devolucoes_sum = 0;
+  let estoque_zerado_count = 0;
   let requisicoes_sum = 0;
   let produtos_sem_giro = 0;
 
@@ -51,8 +51,11 @@ export async function getDashboardMetrics(filtros?: DashboardFiltros) {
     estoque_geral_sum += eg;
     estoque_loja_sum += el;
     vendas_sum += v;
-    devolucoes_sum += Number(row.devolucoes) || 0;
     requisicoes_sum += Number(row.requisicoes) || 0;
+    
+    if (eg === 0 && el === 0) {
+      estoque_zerado_count += 1;
+    }
     
     if (v === 0 && eg > 0) {
       produtos_sem_giro += 1;
@@ -78,10 +81,10 @@ export async function getDashboardMetrics(filtros?: DashboardFiltros) {
       variacao: 'Real',
       descricao: 'Giro (Vendas / Estoque) %'
     },
-    devolucoesTotal: {
-      valor: devolucoes_sum,
+    estoqueZerado: {
+      valor: estoque_zerado_count,
       variacao: 'Real',
-      descricao: 'Volume de produtos devolvidos'
+      descricao: 'Itens com estoque zerado no momento'
     },
     requisicoesAtivas: {
       valor: requisicoes_sum,
@@ -138,4 +141,73 @@ export async function getFabricantes() {
   
   const fabs = Array.from(new Set(data.map(d => d.fabricante))).filter(Boolean);
   return fabs.sort();
+}
+
+export type ItemZerado = {
+  codigo: string;
+  descricao: string;
+  fabricante: string;
+  fornecedor: string;
+  vendasPeriodo: number;
+  dataUltimaEntrada: string;
+  qtdUltimaEntrada: number;
+};
+
+export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise<ItemZerado[]> {
+  const supabase = getSupabaseClient();
+  
+  // 1. Busca os itens zerados na tabela de vendas
+  let queryVendas = supabase.from('historico_estoque_vendas')
+    .select('codigo, descricao, fabricante, vendas, estoque_geral, estoque_loja');
+    
+  if (filtros?.fabricante && filtros.fabricante !== '') {
+    queryVendas = queryVendas.eq('fabricante', filtros.fabricante);
+  }
+
+  const { data: dadosVendas, error: errVendas } = await queryVendas;
+  if (errVendas || !dadosVendas) return [];
+
+  const itensZerados = dadosVendas.filter(row => 
+    (Number(row.estoque_geral) || 0) === 0 && (Number(row.estoque_loja) || 0) === 0
+  );
+
+  if (itensZerados.length === 0) return [];
+
+  // Pega os códigos para cruzar
+  const codigos = itensZerados.map(item => item.codigo);
+
+  // 2. Busca o histórico de entradas para esses códigos
+  const { data: dadosEntradas, error: errEntradas } = await supabase
+    .from('historico_entradas')
+    .select('codigo, data_movimento, quantidade, fornecedor')
+    .in('codigo', codigos);
+
+  const entradasMap: Record<string, { data: string, qtd: number, fornecedor: string }> = {};
+
+  if (!errEntradas && dadosEntradas) {
+    // Para simplificar, pegaremos o primeiro registro de entrada encontrado (que idealmente seria ordenado)
+    for (const ent of dadosEntradas) {
+      if (!entradasMap[ent.codigo]) {
+        entradasMap[ent.codigo] = { 
+          data: ent.data_movimento, 
+          qtd: Number(ent.quantidade) || 0,
+          fornecedor: ent.fornecedor || 'Desconhecido'
+        };
+      }
+    }
+  }
+
+  // 3. Mescla os dados
+  const resultadoFinal = itensZerados.map(item => ({
+    codigo: item.codigo,
+    descricao: item.descricao || 'N/A',
+    fabricante: item.fabricante || 'N/A',
+    fornecedor: entradasMap[item.codigo]?.fornecedor || 'Desconhecido',
+    vendasPeriodo: Number(item.vendas) || 0,
+    dataUltimaEntrada: entradasMap[item.codigo]?.data || 'Sem registro',
+    qtdUltimaEntrada: entradasMap[item.codigo]?.qtd || 0
+  }));
+
+  // Ordena por maior número de vendas (produtos que mais fazem falta)
+  return resultadoFinal.sort((a, b) => b.vendasPeriodo - a.vendasPeriodo);
 }

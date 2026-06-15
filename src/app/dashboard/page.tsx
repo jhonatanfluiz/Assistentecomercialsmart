@@ -14,7 +14,8 @@ import {
   Upload,
   ShoppingCart,
   PackageSearch,
-  Printer
+  Printer,
+  CheckCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { 
@@ -27,7 +28,7 @@ import {
   Legend, 
   ResponsiveContainer 
 } from 'recharts';
-import { getDashboardMetrics, getSalesTrendChart, getFabricantes, DashboardFiltros } from '@/actions/dashboard';
+import { getDashboardMetrics, getSalesTrendChart, getFabricantes, getItensEstoqueZerado, DashboardFiltros, ItemZerado } from '@/actions/dashboard';
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<any>(null);
@@ -36,19 +37,22 @@ export default function Dashboard() {
   const [filtros, setFiltros] = useState<DashboardFiltros>({ periodo: '90' });
   const [activeDetail, setActiveDetail] = useState<string | null>(null);
   const [fabricantesLista, setFabricantesLista] = useState<string[]>([]);
+  const [itensZerados, setItensZerados] = useState<ItemZerado[]>([]);
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       try {
-        const [m, c, f] = await Promise.all([
+        const [m, c, f, z] = await Promise.all([
           getDashboardMetrics(filtros),
           getSalesTrendChart(filtros),
-          getFabricantes()
+          getFabricantes(),
+          getItensEstoqueZerado(filtros)
         ]);
         setMetrics(m);
         setChartData(c);
         setFabricantesLista(f);
+        setItensZerados(z);
       } catch (error) {
         console.error("Erro", error);
       }
@@ -145,15 +149,61 @@ export default function Dashboard() {
             </div>
             
             <div className="bg-[#111827]/80 backdrop-blur-xl p-8 rounded-3xl border border-slate-800 shadow-2xl">
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4 border border-blue-500/20">
-                  <Activity className="text-blue-400" size={32} />
+              {activeDetail === 'estoqueZerado' ? (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <h3 className="text-xl font-bold text-slate-200 mb-6">Detalhamento: Itens com Estoque Zerado</h3>
+                  
+                  {itensZerados.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4 border border-emerald-500/20">
+                        <CheckCircle className="text-emerald-400" size={32} />
+                      </div>
+                      <p className="text-slate-400">Excelente! Não há itens com estoque zerado no momento.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-slate-700">
+                      <table className="w-full text-sm text-left text-slate-300">
+                        <thead className="text-xs text-slate-400 uppercase bg-slate-800/50 border-b border-slate-700">
+                          <tr>
+                            <th className="px-4 py-3 font-medium">Código</th>
+                            <th className="px-4 py-3 font-medium">Descrição</th>
+                            <th className="px-4 py-3 font-medium">Fabricante</th>
+                            <th className="px-4 py-3 font-medium text-right">Vendas no Período</th>
+                            <th className="px-4 py-3 font-medium">Última Entrada</th>
+                            <th className="px-4 py-3 font-medium text-right">Qtd Entrada</th>
+                            <th className="px-4 py-3 font-medium">Fornecedor</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {itensZerados.map((item, idx) => (
+                            <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+                              <td className="px-4 py-3 text-slate-400">{item.codigo}</td>
+                              <td className="px-4 py-3 font-medium text-slate-200">{item.descricao}</td>
+                              <td className="px-4 py-3">{item.fabricante}</td>
+                              <td className="px-4 py-3 text-right text-rose-400 font-bold">{item.vendasPeriodo}</td>
+                              <td className="px-4 py-3">{item.dataUltimaEntrada}</td>
+                              <td className="px-4 py-3 text-right font-medium">{item.qtdUltimaEntrada > 0 ? item.qtdUltimaEntrada : '-'}</td>
+                              <td className="px-4 py-3 text-slate-400">{item.fornecedor}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
-                <h3 className="text-xl font-bold text-slate-200 mb-2">Dados em Processamento</h3>
-                <p className="text-slate-400 max-w-md">
-                  A visualização em tabela para o indicador <strong>{activeDetail}</strong> será carregada aqui assim que o banco de dados final estiver sincronizado com o ERP.
-                </p>
-                <button onClick={() => setActiveDetail(null)} className="mt-8 text-blue-400 hover:text-blue-300 font-medium">
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4 border border-blue-500/20">
+                    <Activity className="text-blue-400" size={32} />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-200 mb-2">Dados em Processamento</h3>
+                  <p className="text-slate-400 max-w-md">
+                    A visualização em tabela para o indicador <strong>{activeDetail}</strong> será carregada aqui em futuras atualizações.
+                  </p>
+                </div>
+              )}
+              <div className="text-center mt-6">
+                <button onClick={() => setActiveDetail(null)} className="text-blue-400 hover:text-blue-300 font-medium">
                   Voltar para o painel
                 </button>
               </div>
@@ -236,15 +286,15 @@ export default function Dashboard() {
             />
 
             <PremiumCard 
-              title="Devoluções" 
-              value={metrics.devolucoesTotal.valor}
-              subtitle={metrics.devolucoesTotal.descricao}
-              trend={metrics.devolucoesTotal.variacao}
-              icon={<TrendingDown className="text-amber-400" size={24} />}
-              gradient="from-amber-500/10 to-orange-500/5"
-              borderColor="border-amber-500/20"
-              iconBg="bg-amber-500/10"
-              onClick={() => setActiveDetail('Devoluções')}
+              title="Estoque Zerado" 
+              value={metrics.estoqueZerado.valor}
+              subtitle={metrics.estoqueZerado.descricao}
+              trend={metrics.estoqueZerado.variacao}
+              icon={<TrendingDown className="text-rose-400" size={24} />}
+              gradient="from-rose-500/10 to-red-500/5"
+              borderColor="border-rose-500/20"
+              iconBg="bg-rose-500/10"
+              onClick={() => setActiveDetail('estoqueZerado')}
             />
 
           </div>
