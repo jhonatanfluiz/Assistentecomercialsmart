@@ -153,6 +153,20 @@ export type ItemZerado = {
   qtdUltimaEntrada: number;
 };
 
+function formatDataBR(isoDate: string) {
+  if (!isoDate || isoDate === 'Sem registro') return isoDate;
+  try {
+    const d = new Date(isoDate);
+    const dia = String(d.getUTCDate()).padStart(2, '0');
+    const mes = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const ano = d.getUTCFullYear();
+    if (isNaN(ano)) return isoDate;
+    return `${dia}/${mes}/${ano}`;
+  } catch(e) {
+    return isoDate;
+  }
+}
+
 export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise<ItemZerado[]> {
   const supabase = getSupabaseClient();
   
@@ -173,8 +187,8 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
 
   if (itensZerados.length === 0) return [];
 
-  // Pega os códigos para cruzar
-  const codigos = itensZerados.map(item => item.codigo);
+  // Pega os códigos para cruzar (removendo espaços em branco extras)
+  const codigos = itensZerados.map(item => String(item.codigo).trim());
 
   // 2. Busca o histórico de entradas para esses códigos
   const { data: dadosEntradas, error: errEntradas } = await supabase
@@ -186,7 +200,6 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
   const entradasMap: Record<string, { data: string, qtd: number, fornecedor: string }> = {};
 
   if (!errEntradas && dadosEntradas) {
-    // Para simplificar, pegaremos o primeiro registro de entrada encontrado (que idealmente seria ordenado)
     for (const ent of dadosEntradas) {
       if (!entradasMap[ent.codigo]) {
         entradasMap[ent.codigo] = { 
@@ -199,15 +212,18 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
   }
 
   // 3. Mescla os dados
-  const resultadoFinal = itensZerados.map(item => ({
-    codigo: item.codigo,
-    descricao: item.descricao || 'N/A',
-    fabricante: item.fabricante || 'N/A',
-    fornecedor: entradasMap[item.codigo]?.fornecedor || 'Desconhecido',
-    vendasPeriodo: Number(item.vendas) || 0,
-    dataUltimaEntrada: entradasMap[item.codigo]?.data || 'Sem registro',
-    qtdUltimaEntrada: entradasMap[item.codigo]?.qtd || 0
-  }));
+  const resultadoFinal = itensZerados.map(item => {
+    const codTrim = String(item.codigo).trim();
+    return {
+      codigo: codTrim,
+      descricao: item.descricao || 'N/A',
+      fabricante: item.fabricante || 'N/A',
+      fornecedor: entradasMap[codTrim]?.fornecedor || 'Desconhecido',
+      vendasPeriodo: Number(item.vendas) || 0,
+      dataUltimaEntrada: formatDataBR(entradasMap[codTrim]?.data || 'Sem registro'),
+      qtdUltimaEntrada: entradasMap[codTrim]?.qtd || 0
+    };
+  });
 
   // Ordena por maior número de vendas (produtos que mais fazem falta)
   return resultadoFinal.sort((a, b) => b.vendasPeriodo - a.vendasPeriodo);
