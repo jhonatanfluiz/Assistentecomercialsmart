@@ -11,6 +11,7 @@ function getSupabaseClient() {
 export type DashboardFiltros = {
   fabricante?: string;
   periodo?: string; // mes_referencia na verdade
+  local?: string;
 };
 
 export async function getDashboardMetrics(filtros?: DashboardFiltros) {
@@ -20,6 +21,10 @@ export async function getDashboardMetrics(filtros?: DashboardFiltros) {
   
   if (filtros?.fabricante && filtros.fabricante !== '') {
     query = query.eq('fabricante', filtros.fabricante);
+  }
+  
+  if (filtros?.local && filtros.local !== '') {
+    query = query.eq('loja', filtros.local);
   }
 
   const { data, error } = await query;
@@ -107,6 +112,10 @@ export async function getSalesTrendChart(filtros?: DashboardFiltros) {
   if (filtros?.fabricante && filtros.fabricante !== '') {
     query = query.eq('fabricante', filtros.fabricante);
   }
+  
+  if (filtros?.local && filtros.local !== '') {
+    query = query.eq('loja', filtros.local);
+  }
 
   const { data, error } = await query;
   
@@ -151,6 +160,7 @@ export type ItemZerado = {
   vendasPeriodo: number;
   dataUltimaEntrada: string;
   qtdUltimaEntrada: number;
+  local: string;
 };
 
 function formatDataBR(isoDate: string) {
@@ -172,10 +182,14 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
   
   // 1. Busca os itens zerados na tabela de vendas
   let queryVendas = supabase.from('historico_estoque_vendas')
-    .select('codigo, descricao, fabricante, vendas, estoque_geral, estoque_loja');
+    .select('codigo, descricao, fabricante, vendas, estoque_geral, estoque_loja, loja');
     
   if (filtros?.fabricante && filtros.fabricante !== '') {
     queryVendas = queryVendas.eq('fabricante', filtros.fabricante);
+  }
+  
+  if (filtros?.local && filtros.local !== '') {
+    queryVendas = queryVendas.eq('loja', filtros.local);
   }
 
   const { data: dadosVendas, error: errVendas } = await queryVendas;
@@ -221,12 +235,23 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
       fornecedor: entradasMap[codTrim]?.fornecedor || 'Desconhecido',
       vendasPeriodo: Number(item.vendas) || 0,
       dataUltimaEntrada: formatDataBR(entradasMap[codTrim]?.data || 'Sem registro'),
-      qtdUltimaEntrada: entradasMap[codTrim]?.qtd || 0
+      qtdUltimaEntrada: entradasMap[codTrim]?.qtd || 0,
+      local: item.loja || 'Desconhecido'
     };
   });
 
   // Ordena por maior número de vendas (produtos que mais fazem falta)
   return resultadoFinal.sort((a, b) => b.vendasPeriodo - a.vendasPeriodo);
+}
+
+export async function getLocais() {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.from('historico_estoque_vendas').select('loja');
+  
+  if (error || !data) return [];
+  
+  const locais = Array.from(new Set(data.map(d => d.loja))).filter(Boolean);
+  return locais.sort();
 }
 
 export type ItemSemGiro = {
@@ -236,16 +261,21 @@ export type ItemSemGiro = {
   estoqueGeral: number;
   estoqueLoja: number;
   totalEstoque: number;
+  local: string;
 };
 
 export async function getProdutosSemGiroDetalhamento(filtros?: DashboardFiltros): Promise<ItemSemGiro[]> {
   const supabase = getSupabaseClient();
   
   let query = supabase.from('historico_estoque_vendas')
-    .select('codigo, descricao, fabricante, vendas, estoque_geral, estoque_loja');
+    .select('codigo, descricao, fabricante, vendas, estoque_geral, estoque_loja, loja');
     
   if (filtros?.fabricante && filtros.fabricante !== '') {
     query = query.eq('fabricante', filtros.fabricante);
+  }
+  
+  if (filtros?.local && filtros.local !== '') {
+    query = query.eq('loja', filtros.local);
   }
 
   const { data, error } = await query;
@@ -267,7 +297,8 @@ export async function getProdutosSemGiroDetalhamento(filtros?: DashboardFiltros)
       fabricante: item.fabricante || 'N/A',
       estoqueGeral: eg,
       estoqueLoja: el,
-      totalEstoque: eg + el
+      totalEstoque: eg + el,
+      local: item.loja || 'Desconhecido'
     };
   }).sort((a, b) => b.totalEstoque - a.totalEstoque);
 }

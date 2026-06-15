@@ -28,7 +28,7 @@ import {
   Legend, 
   ResponsiveContainer 
 } from 'recharts';
-import { getDashboardMetrics, getSalesTrendChart, getFabricantes, getItensEstoqueZerado, getProdutosSemGiroDetalhamento, DashboardFiltros, ItemZerado, ItemSemGiro } from '@/actions/dashboard';
+import { getDashboardMetrics, getSalesTrendChart, getFabricantes, getLocais, getItensEstoqueZerado, getProdutosSemGiroDetalhamento, DashboardFiltros, ItemZerado, ItemSemGiro } from '@/actions/dashboard';
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<any>(null);
@@ -37,6 +37,7 @@ export default function Dashboard() {
   const [filtros, setFiltros] = useState<DashboardFiltros>({ periodo: '90' });
   const [activeDetail, setActiveDetail] = useState<string | null>(null);
   const [fabricantesLista, setFabricantesLista] = useState<string[]>([]);
+  const [locaisLista, setLocaisLista] = useState<string[]>([]);
   const [itensZerados, setItensZerados] = useState<ItemZerado[]>([]);
   const [itensSemGiro, setItensSemGiro] = useState<ItemSemGiro[]>([]);
 
@@ -44,16 +45,18 @@ export default function Dashboard() {
     async function loadData() {
       setLoading(true);
       try {
-        const [m, c, f, z, sg] = await Promise.all([
+        const [m, c, f, l, z, sg] = await Promise.all([
           getDashboardMetrics(filtros),
           getSalesTrendChart(filtros),
           getFabricantes(),
+          getLocais(),
           getItensEstoqueZerado(filtros),
           getProdutosSemGiroDetalhamento(filtros)
         ]);
         setMetrics(m);
         setChartData(c);
         setFabricantesLista(f);
+        setLocaisLista(l);
         setItensZerados(z);
         setItensSemGiro(sg);
       } catch (error) {
@@ -117,6 +120,17 @@ export default function Dashboard() {
               <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-slate-200 transition-colors" />
             </div>
 
+            <div className="relative group hidden sm:block">
+              <select name="local" onChange={handleFilterChange} 
+                className="appearance-none bg-slate-900/50 hover:bg-slate-900/80 border border-slate-700/50 text-slate-200 text-sm rounded-xl px-4 py-2.5 pr-10 outline-none transition-all cursor-pointer focus:ring-2 focus:ring-blue-500/50">
+                <option value="">Todos os Locais</option>
+                {locaisLista.map(loc => (
+                  <option key={loc} value={loc}>{loc}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-slate-200 transition-colors" />
+            </div>
+
             <Link href="/pedidos-salvos" className="ml-2 flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-all border border-slate-700">
               <PackageSearch size={16} />
               <span className="hidden sm:inline">Pedidos Salvos</span>
@@ -168,6 +182,7 @@ export default function Dashboard() {
                       <table className="w-full text-sm text-left text-slate-300">
                         <thead className="text-xs text-slate-400 uppercase bg-slate-800/50 border-b border-slate-700">
                           <tr>
+                            <th className="px-4 py-3 font-medium">Local</th>
                             <th className="px-4 py-3 font-medium">Código</th>
                             <th className="px-4 py-3 font-medium">Descrição</th>
                             <th className="px-4 py-3 font-medium">Fabricante</th>
@@ -180,6 +195,7 @@ export default function Dashboard() {
                         <tbody>
                           {itensZerados.map((item, idx) => (
                             <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+                              <td className="px-4 py-3 text-slate-300 font-semibold">{item.local}</td>
                               <td className="px-4 py-3 text-slate-400">{item.codigo}</td>
                               <td className="px-4 py-3 font-medium text-slate-200">{item.descricao}</td>
                               <td className="px-4 py-3">{item.fabricante}</td>
@@ -210,6 +226,7 @@ export default function Dashboard() {
                       <table className="w-full text-sm text-left text-slate-300">
                         <thead className="text-xs text-slate-400 uppercase bg-slate-800/50 border-b border-slate-700">
                           <tr>
+                            <th className="px-4 py-3 font-medium">Local</th>
                             <th className="px-4 py-3 font-medium">Código</th>
                             <th className="px-4 py-3 font-medium">Descrição</th>
                             <th className="px-4 py-3 font-medium">Fabricante</th>
@@ -221,6 +238,7 @@ export default function Dashboard() {
                         <tbody>
                           {itensSemGiro.map((item, idx) => (
                             <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+                              <td className="px-4 py-3 text-slate-300 font-semibold">{item.local}</td>
                               <td className="px-4 py-3 text-slate-400">{item.codigo}</td>
                               <td className="px-4 py-3 font-medium text-slate-200">{item.descricao}</td>
                               <td className="px-4 py-3">{item.fabricante}</td>
