@@ -49,12 +49,15 @@ export async function processarImportacao(dados: LinhaImportada[], fabricante: s
 
     // Preparar os dados para inserção adicionando fabricante e mes_referencia em todas as linhas
     const map = new Map<string, any>();
+    
+    // Padroniza o nome do fabricante para evitar duplicações (ex: "ms" vs "MS")
+    const fabricantePadronizado = String(fabricante || '').trim().toUpperCase();
 
     for (const linha of dados) {
       const key = `${linha.codigo}_${linha.loja}`;
       if (!map.has(key)) {
         map.set(key, {
-          fabricante: fabricante,
+          fabricante: fabricantePadronizado,
           mes_referencia: mesReferencia,
           status: linha.status,
           loja: linha.loja,
@@ -93,7 +96,7 @@ export async function processarImportacao(dados: LinhaImportada[], fabricante: s
     await supabase
       .from('historico_estoque_vendas')
       .delete()
-      .eq('fabricante', fabricante)
+      .eq('fabricante', fabricantePadronizado)
       .eq('mes_referencia', mesReferencia);
 
     // Inserção em lotes no Supabase
@@ -166,8 +169,8 @@ export async function processarImportacaoEntradas(dados: LinhaEntrada[]) {
         map.set(key, {
           codigo: codigoStr,
           descricao: linha.descricao,
-          fabricante: linha.fabricante,
-          fornecedor: linha.fornecedor,
+          fabricante: String(linha.fabricante || '').trim().toUpperCase(),
+          fornecedor: String(linha.fornecedor || '').trim().toUpperCase(),
           data_movimento: dataMov,
           quantidade: qtd,
         });
