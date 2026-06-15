@@ -68,3 +68,48 @@ Ele deve focar em recuperar a venda de ${data.defesa.produtosEmQueda[0].nome} (q
     };
   }
 }
+
+export type RelatorioRupturaData = {
+  item: string;
+  local: string;
+  ultimaEntrada: string;
+  qtdUltimaEntrada: number;
+  planoAcao: string;
+}
+
+export async function gerarRelatorioRuptura(
+  codigo: string, 
+  descricao: string, 
+  local: string, 
+  ultimaEntrada: string, 
+  qtdUltimaEntrada: number
+): Promise<RelatorioRupturaData> {
+  const data: Omit<RelatorioRupturaData, 'planoAcao'> = {
+    item: `${codigo} - ${descricao}`,
+    local,
+    ultimaEntrada,
+    qtdUltimaEntrada
+  };
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const prompt = `Você é um consultor comercial especialista em gestão de estoque. 
+O produto "${descricao}" (Cód: ${codigo}) está ZERADO no local/loja "${local}".
+A última entrada registrada deste produto neste local foi em ${ultimaEntrada} com ${qtdUltimaEntrada} unidades.
+Escreva um plano de ação rápido, persuasivo e tático (em um parágrafo de até 4 linhas) orientado à equipe de compras ou de vendas. Sugira verificar se há mercadoria a caminho, priorizar reposição urgente e instruir a equipe comercial a reter os clientes usando produtos similares até a reposição chegar. Mantenha o tom profissional e direto.`;
+    
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+
+    return {
+      ...data,
+      planoAcao: text.replace(/\n/g, ' ').trim()
+    };
+  } catch (error) {
+    console.error("Erro Gemini (Ruptura):", error);
+    return {
+      ...data,
+      planoAcao: "Atenção Equipe: Produto zerado no estoque. Verifiquem urgentemente o status de reposição com o setor de compras. Enquanto o produto não chega, direcionem os clientes para alternativas similares de alto giro para evitar a perda da venda."
+    };
+  }
+}

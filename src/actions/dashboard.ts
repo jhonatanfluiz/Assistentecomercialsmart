@@ -215,8 +215,12 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
 
   if (!errEntradas && dadosEntradas) {
     for (const ent of dadosEntradas) {
-      if (!entradasMap[ent.codigo]) {
-        entradasMap[ent.codigo] = { 
+      const codTrim = String(ent.codigo).trim();
+      const locTrim = String(ent.local || '').trim();
+      const key = `${codTrim}_${locTrim}`;
+      
+      if (!entradasMap[key]) {
+        entradasMap[key] = { 
           data: ent.data_movimento, 
           qtd: Number(ent.quantidade) || 0,
           fornecedor: ent.fornecedor || 'Desconhecido',
@@ -229,20 +233,19 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
   // 3. Mescla os dados
   const resultadoFinal = itensZerados.map(item => {
     const codTrim = String(item.codigo).trim();
-    // Usa o local da entrada se existir, senão usa o local da venda
-    const localDeEntrada = entradasMap[codTrim]?.local && entradasMap[codTrim].local !== 'Desconhecido' 
-      ? entradasMap[codTrim].local 
-      : (item.loja || 'Desconhecido');
+    const locTrim = String(item.loja || '').trim();
+    const key = `${codTrim}_${locTrim}`;
+    const entrada = entradasMap[key];
 
     return {
       codigo: codTrim,
       descricao: item.descricao || 'N/A',
       fabricante: item.fabricante || 'N/A',
-      fornecedor: entradasMap[codTrim]?.fornecedor || 'Desconhecido',
+      fornecedor: entrada?.fornecedor || 'Desconhecido',
       vendasPeriodo: Number(item.vendas) || 0,
-      dataUltimaEntrada: formatDataBR(entradasMap[codTrim]?.data || 'Sem registro'),
-      qtdUltimaEntrada: entradasMap[codTrim]?.qtd || 0,
-      local: localDeEntrada
+      dataUltimaEntrada: formatDataBR(entrada?.data || 'Sem registro'),
+      qtdUltimaEntrada: entrada?.qtd || 0,
+      local: locTrim || 'Desconhecido'
     };
   });
 
