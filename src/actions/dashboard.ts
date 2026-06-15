@@ -213,12 +213,25 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
 
   const entradasMap: Record<string, { data: string, qtd: number, fornecedor: string, local: string }> = {};
 
+  // Função auxiliar para normalizar e mapear locais equivalentes
+  const normalizarLocal = (loc: string) => {
+    const l = String(loc).trim().toUpperCase();
+    if (l === 'CD' || l.includes('TAQUARI')) return 'CD_TAQUARI';
+    if (l === 'SJC' || l === '33-SJS') return 'SJC_SJS';
+    if (l.includes('ABDO')) return 'ABDO';
+    if (l.includes('MOOCA')) return 'MOOCA';
+    if (l.includes('SUZ')) return 'SUZ';
+    if (l.includes('SAM')) return 'SAM';
+    return l;
+  };
+
   if (!errEntradas && dadosEntradas) {
     for (const ent of dadosEntradas) {
       const codTrim = String(ent.codigo).trim();
-      const locTrim = String(ent.local || '').trim();
-      const key = `${codTrim}_${locTrim}`;
+      const locNorm = normalizarLocal(ent.local);
+      const key = `${codTrim}_${locNorm}`;
       
+      // Armazenamos a entrada mais recente (a query já vem ordernada DESC)
       if (!entradasMap[key]) {
         entradasMap[key] = { 
           data: ent.data_movimento, 
@@ -233,8 +246,11 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
   // 3. Mescla os dados
   const resultadoFinal = itensZerados.map(item => {
     const codTrim = String(item.codigo).trim();
-    const locTrim = String(item.loja || '').trim();
-    const key = `${codTrim}_${locTrim}`;
+    const lojaOriginal = String(item.loja || '').trim();
+    const locNorm = normalizarLocal(lojaOriginal);
+    const key = `${codTrim}_${locNorm}`;
+    
+    // Tenta encontrar a entrada para a mesma loja. Se não achar, não mostra de outra loja.
     const entrada = entradasMap[key];
 
     return {
@@ -245,7 +261,7 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
       vendasPeriodo: Number(item.vendas) || 0,
       dataUltimaEntrada: formatDataBR(entrada?.data || 'Sem registro'),
       qtdUltimaEntrada: entrada?.qtd || 0,
-      local: locTrim || 'Desconhecido'
+      local: lojaOriginal || 'Desconhecido'
     };
   });
 
