@@ -87,7 +87,7 @@ export async function consultarAssistente(acao: AssistenteAcao, mensagemLivre?: 
       return `(Simulação Local - Configure a chave do Gemini para respostas reais)\n\nEntendido! Segundo o motor analítico, os dados reais indicam vendas totais de ${dadosBase.resumoDashboard.vendasTotais} itens, com ${dadosBase.resumoDashboard.estoqueZeradoCount} produtos zerados.`;
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
     const result = await model.generateContent(promptFinal);
     return result.response.text();
     
