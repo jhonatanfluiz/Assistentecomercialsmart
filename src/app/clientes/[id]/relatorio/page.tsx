@@ -42,12 +42,13 @@ export default function RelatorioRupturaPage() {
     : itensZerados;
 
   const handleGerarRelatorio = async () => {
-    if (!itemSelecionado || !localSelecionado) return;
+    if (!itemSelecionado) return;
     
     setGerando(true);
     setRelatorio(null);
     try {
-      const item = itensZerados.find(i => i.codigo === itemSelecionado && i.local === localSelecionado);
+      const [cod, loc] = itemSelecionado.split('|');
+      const item = itensZerados.find(i => i.codigo === cod && i.local === loc);
       if (item) {
         const resultado = await gerarRelatorioRuptura(
           item.codigo,
@@ -83,14 +84,14 @@ export default function RelatorioRupturaPage() {
       <div className="max-w-4xl mx-auto mb-8 print:hidden">
         <div className="bg-[#111827] rounded-3xl p-6 border border-slate-800 shadow-2xl flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1 w-full">
-            <label className="block text-sm font-medium text-slate-400 mb-2">Selecione o Local</label>
+            <label className="block text-sm font-medium text-slate-400 mb-2">Selecione o Local (Opcional)</label>
             <select 
               value={localSelecionado} 
               onChange={e => { setLocalSelecionado(e.target.value); setItemSelecionado(''); setRelatorio(null); }}
               className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 outline-none text-slate-200"
               disabled={loading}
             >
-              <option value="">-- Selecione o Local --</option>
+              <option value="">-- Todos os Locais --</option>
               {locais.map(l => (
                 <option key={l} value={l}>{l}</option>
               ))}
@@ -103,18 +104,23 @@ export default function RelatorioRupturaPage() {
               value={itemSelecionado} 
               onChange={e => { setItemSelecionado(e.target.value); setRelatorio(null); }}
               className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 outline-none text-slate-200"
-              disabled={loading || !localSelecionado || itensFiltrados.length === 0}
+              disabled={loading || itensFiltrados.length === 0}
             >
               <option value="">-- Selecione o Item --</option>
-              {itensFiltrados.map(item => (
-                <option key={item.codigo} value={item.codigo}>{item.codigo} - {item.descricao}</option>
-              ))}
+              {itensFiltrados.map(item => {
+                const uniqueKey = `${item.codigo}|${item.local}`;
+                return (
+                  <option key={uniqueKey} value={uniqueKey}>
+                    {item.codigo} - {item.descricao} ({item.local})
+                  </option>
+                );
+              })}
             </select>
           </div>
 
           <button 
             onClick={handleGerarRelatorio}
-            disabled={!itemSelecionado || !localSelecionado || gerando}
+            disabled={!itemSelecionado || gerando}
             className="px-6 py-3 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-purple-500/20 whitespace-nowrap"
           >
             {gerando ? 'Gerando Plano IA...' : 'Gerar Relatório'}
