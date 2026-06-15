@@ -35,13 +35,38 @@ export async function gerarPedidoInteligente(clienteId: string): Promise<Cenario
   // 1. Em um cenário real, aqui puxaríamos o histórico do cliente do banco:
   // const { data } = await supabase.from('itens_pedido').select(`...`).eq('cliente_id', clienteId);
   
-  // Para fins de desenvolvimento do MVP, criaremos um mock de dados mastigados que 
-  // o Analytical Engine (criado no passo anterior) teria gerado para este cliente:
-  const analiseClienteMock = [
-    { id: 'p1', nome: 'Caixa de Parafusos 10mm', fab: 'Gerdau', mediaQtd: 50, ultimaQtd: 10, queda: 0.8, diasSemCompra: 15 },
-    { id: 'p2', nome: 'Alicate Universal', fab: 'Tramontina', mediaQtd: 15, ultimaQtd: 15, queda: 0, diasSemCompra: 45 },
-    { id: 'p3', nome: 'Tinta Acrílica Branca 18L', fab: 'Suvinil', mediaQtd: 5, ultimaQtd: 0, queda: 1, diasSemCompra: 90 }, // Desaparecido
-  ];
+  // Buscar os top 15 produtos com maior volume de vendas
+  const { data, error } = await supabase
+    .from('historico_estoque_vendas')
+    .select('id, codigo, descricao, fabricante, vendas, estoque_loja, estoque_geral')
+    .order('vendas', { ascending: false })
+    .limit(15);
+
+  if (error) {
+    console.error("Erro ao buscar dados reais do pedido:", error);
+    throw new Error("Não foi possível carregar os dados para gerar o pedido.");
+  }
+
+  // Mapear os dados reais para a estrutura que a IA espera
+  const analiseClienteMock = (data || []).map(p => {
+    const vendas = Number(p.vendas) || 0;
+    const estoqueDisponivel = Number(p.estoque_loja) || Number(p.estoque_geral) || 0;
+    
+    return {
+      id: p.id || p.codigo,
+      nome: p.descricao || 'Produto sem nome',
+      fab: p.fabricante || 'Desconhecido',
+      mediaQtd: vendas,
+      ultimaQtd: estoqueDisponivel,
+      queda: vendas > estoqueDisponivel ? 0.5 : 0, // Heurística simples de queda
+      diasSemCompra: 30 // Valor fixo já que a planilha avalia o mês cheio
+    };
+  });
+
+  // Se a planilha não tiver nenhum produto com venda > 0
+  if (analiseClienteMock.length === 0) {
+    analiseClienteMock.push({ id: 'p1', nome: 'Produto de Teste (Sem Dados Reais)', fab: 'N/A', mediaQtd: 10, ultimaQtd: 5, queda: 0.5, diasSemCompra: 30 });
+  }
 
   // 2. Cálculo Base Matemático
   // Conservador: Apenas o que gira e descontando o risco (vender um pouco menos que a média)
