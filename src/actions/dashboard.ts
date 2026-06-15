@@ -207,11 +207,11 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
   // 2. Busca o histórico de entradas para esses códigos
   const { data: dadosEntradas, error: errEntradas } = await supabase
     .from('historico_entradas')
-    .select('codigo, data_movimento, quantidade, fornecedor')
+    .select('codigo, data_movimento, quantidade, fornecedor, local')
     .in('codigo', codigos)
     .order('data_movimento', { ascending: false });
 
-  const entradasMap: Record<string, { data: string, qtd: number, fornecedor: string }> = {};
+  const entradasMap: Record<string, { data: string, qtd: number, fornecedor: string, local: string }> = {};
 
   if (!errEntradas && dadosEntradas) {
     for (const ent of dadosEntradas) {
@@ -219,7 +219,8 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
         entradasMap[ent.codigo] = { 
           data: ent.data_movimento, 
           qtd: Number(ent.quantidade) || 0,
-          fornecedor: ent.fornecedor || 'Desconhecido'
+          fornecedor: ent.fornecedor || 'Desconhecido',
+          local: ent.local || 'Desconhecido'
         };
       }
     }
@@ -228,6 +229,11 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
   // 3. Mescla os dados
   const resultadoFinal = itensZerados.map(item => {
     const codTrim = String(item.codigo).trim();
+    // Usa o local da entrada se existir, senão usa o local da venda
+    const localDeEntrada = entradasMap[codTrim]?.local && entradasMap[codTrim].local !== 'Desconhecido' 
+      ? entradasMap[codTrim].local 
+      : (item.loja || 'Desconhecido');
+
     return {
       codigo: codTrim,
       descricao: item.descricao || 'N/A',
@@ -236,7 +242,7 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
       vendasPeriodo: Number(item.vendas) || 0,
       dataUltimaEntrada: formatDataBR(entradasMap[codTrim]?.data || 'Sem registro'),
       qtdUltimaEntrada: entradasMap[codTrim]?.qtd || 0,
-      local: item.loja || 'Desconhecido'
+      local: localDeEntrada
     };
   });
 

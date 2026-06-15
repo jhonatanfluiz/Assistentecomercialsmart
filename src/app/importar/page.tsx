@@ -24,7 +24,7 @@ export default function ImportarPage() {
 
   const colunasBancoSaidas = [
     { key: 'status', label: 'Status', required: false },
-    { key: 'loja', label: 'Loja', required: false },
+    { key: 'loja', label: 'Local', required: false },
     { key: 'zona', label: 'Zona', required: false },
     { key: 'periodo_analisado', label: 'Período Analisado', required: false },
     { key: 'codigo', label: 'Codigo', required: true },
@@ -47,6 +47,7 @@ export default function ImportarPage() {
   ];
 
   const colunasBancoEntradas = [
+    { key: 'local', label: 'Local', required: false },
     { key: 'codigo', label: 'Código do Item', required: true },
     { key: 'descricao', label: 'Item Descrição', required: true },
     { key: 'fabricante', label: 'Família', required: false },
@@ -135,6 +136,7 @@ export default function ImportarPage() {
       } else {
         const dadosMapeados = arquivoInfo?.linhas.map(linha => {
           return {
+            local: linha[mapeamento.local] || '',
             codigo: linha[mapeamento.codigo] || '',
             descricao: linha[mapeamento.descricao] || '',
             fabricante: linha[mapeamento.fabricante] || '',

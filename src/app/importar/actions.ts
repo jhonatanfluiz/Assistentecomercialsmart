@@ -123,6 +123,7 @@ export async function processarImportacao(dados: LinhaImportada[], fabricante: s
 }
 
 export type LinhaEntrada = {
+  local?: string;
   codigo: string;
   descricao: string;
   fabricante: string;
@@ -169,6 +170,7 @@ export async function processarImportacaoEntradas(dados: LinhaEntrada[]) {
         map.set(key, {
           codigo: codigoStr,
           descricao: linha.descricao,
+          local: String(linha.local || '').trim(),
           fabricante: String(linha.fabricante || '').trim().toUpperCase(),
           fornecedor: String(linha.fornecedor || '').trim().toUpperCase(),
           data_movimento: dataMov,
