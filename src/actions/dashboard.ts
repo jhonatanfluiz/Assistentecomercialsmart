@@ -602,18 +602,20 @@ export type ProdutoBusca = {
   vendasTotais: number;
 };
 
-export async function buscarTodosProdutos(termo: string): Promise<ProdutoBusca[]> {
+export async function buscarTodosProdutos(termo?: string): Promise<ProdutoBusca[]> {
   const supabase = getSupabaseClient();
   
-  if (!termo || termo.length < 2) return [];
-
-  const t = termo.trim().toLowerCase();
-
-  const { data, error } = await supabase
+  let query = supabase
     .from('historico_estoque_vendas')
-    .select('codigo, descricao, fabricante, loja, estoque_geral, estoque_loja, vendas')
-    .or(`codigo.ilike.%${t}%,descricao.ilike.%${t}%`)
-    .limit(200);
+    .select('codigo, descricao, fabricante, loja, estoque_geral, estoque_loja, vendas');
+
+  if (termo && termo.length > 0) {
+    const t = termo.trim().toLowerCase();
+    query = query.or(`codigo.ilike.%${t}%,descricao.ilike.%${t}%`);
+  }
+
+  // Se não tem termo, podemos buscar os mais recentes ou limitar mais para não pesar
+  const { data, error } = await query.limit(500);
 
   if (error || !data) return [];
 

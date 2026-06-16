@@ -17,12 +17,8 @@ export default function ConsultaProdutosPage() {
   // Debounce effect para pesquisa
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
-      if (termo.length >= 2) {
-        realizarBusca(termo);
-      } else {
-        setResultados([]);
-      }
-    }, 500);
+      realizarBusca(termo);
+    }, 300);
 
     return () => clearTimeout(delayDebounceFn);
   }, [termo]);
@@ -97,17 +93,21 @@ export default function ConsultaProdutosPage() {
           </div>
 
           {/* Resultados da Busca */}
-          {resultados.length > 0 && !produtoSelecionado && (
+          {resultados.length > 0 && (
             <div className="mt-6 border border-slate-700 rounded-2xl overflow-hidden bg-slate-900/50 relative z-10">
               <div className="max-h-80 overflow-y-auto">
-                {resultados.map((prod, idx) => (
-                  <button 
-                    key={`${prod.codigo}_${prod.loja}_${idx}`}
-                    onClick={() => selecionarProduto(prod)}
-                    className="w-full text-left p-4 border-b border-slate-800 hover:bg-slate-800/80 transition-colors flex flex-col md:flex-row gap-2 md:items-center justify-between"
-                  >
-                    <div>
-                      <h3 className="font-bold text-slate-200">{prod.descricao}</h3>
+                {resultados.map((prod, idx) => {
+                  const isSelected = produtoSelecionado?.codigo === prod.codigo && produtoSelecionado?.loja === prod.loja;
+                  return (
+                    <button 
+                      key={`${prod.codigo}_${prod.loja}_${idx}`}
+                      onClick={() => selecionarProduto(prod)}
+                      className={`w-full text-left p-4 border-b border-slate-800 transition-colors flex flex-col md:flex-row gap-2 md:items-center justify-between ${
+                        isSelected ? 'bg-blue-900/40 border-l-4 border-l-blue-500' : 'hover:bg-slate-800/80'
+                      }`}
+                    >
+                      <div>
+                        <h3 className={`font-bold ${isSelected ? 'text-blue-400' : 'text-slate-200'}`}>{prod.descricao}</h3>
                       <div className="text-sm text-slate-400 flex items-center gap-3 mt-1">
                         <span>Cód: <span className="text-slate-300 font-medium">{prod.codigo}</span></span>
                         <span>•</span>
@@ -126,7 +126,8 @@ export default function ConsultaProdutosPage() {
                       </div>
                     </div>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
