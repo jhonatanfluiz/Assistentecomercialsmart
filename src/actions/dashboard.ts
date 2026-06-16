@@ -591,3 +591,56 @@ export async function getHistoricoEntradasSaidasItem(codigo: string, local: stri
 
   return result;
 }
+
+export type ProdutoBusca = {
+  codigo: string;
+  descricao: string;
+  fabricante: string;
+  loja: string;
+  estoqueGeral: number;
+  estoqueLoja: number;
+  vendasTotais: number;
+};
+
+export async function buscarTodosProdutos(termo: string): Promise<ProdutoBusca[]> {
+  const supabase = getSupabaseClient();
+  
+  if (!termo || termo.length < 2) return [];
+
+  const t = termo.trim().toLowerCase();
+
+  const { data, error } = await supabase
+    .from('historico_estoque_vendas')
+    .select('codigo, descricao, fabricante, loja, estoque_geral, estoque_loja, vendas')
+    .or(`codigo.ilike.%${t}%,descricao.ilike.%${t}%`)
+    .limit(200);
+
+  if (error || !data) return [];
+
+  // Agrupar para não repetir (código + loja) pegando a última entrada ou somando
+  // O banco tem várias linhas por mês_referencia. Precisamos agrupar para a listagem não ficar repetitiva.
+  const map: Record<string, ProdutoBusca> = {};
+
+  for (const row of data) {
+    const key = `${row.codigo}_${row.loja}`;
+    if (!map[key]) {
+      map[key] = {
+        codigo: row.codigo,
+        descricao: row.descricao || 'N/A',
+        fabricante: row.fabricante || 'N/A',
+        loja: row.loja || 'Desconhecido',
+        estoqueGeral: Number(row.estoque_geral) || 0,
+        estoqueLoja: Number(row.estoque_loja) || 0,
+        vendasTotais: 0
+      };
+    }
+    // Somar vendas de todo histórico disponível para essa listagem
+    map[key].vendasTotais += (Number(row.vendas) || 0);
+  }
+
+  const result = Object.values(map);
+  // Ordenar pelos que mais venderam
+  result.sort((a, b) => b.vendasTotais - a.vendasTotais);
+
+  return result.slice(0, 30); // Retorna top 30 para a UI não ficar pesada
+}

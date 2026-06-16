@@ -15,7 +15,8 @@ import {
   ShoppingCart,
   PackageSearch,
   Printer,
-  CheckCircle
+  CheckCircle,
+  Search
 } from 'lucide-react';
 import Link from 'next/link';
 import { 
@@ -172,6 +173,11 @@ export default function Dashboard() {
             <Link href="/clientes/123/pedido" className="ml-2 flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20">
               <ShoppingCart size={16} />
               <span className="hidden sm:inline">Criar Pedido</span>
+            </Link>
+
+            <Link href="/produtos" className="ml-2 flex items-center gap-2 bg-pink-600 hover:bg-pink-500 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-pink-500/20">
+              <Search size={16} />
+              <span className="hidden sm:inline">Produtos</span>
             </Link>
 
             <Link href="/importar" className="ml-2 flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-500/20">
