@@ -505,10 +505,10 @@ export async function getHistoricoEntradasSaidasItem(codigo: string, local: stri
 
   const locNormReq = normalizarLocal(local);
 
-  // Buscar vendas
+  // Buscar vendas (O campo vendas contém as SAÍDAS dos últimos 12 MESES)
   const { data: vendasData } = await supabase
     .from('historico_estoque_vendas')
-    .select('mes_referencia, vendas, loja')
+    .select('vendas, loja')
     .eq('codigo', codTrim);
 
   // Buscar entradas
@@ -517,33 +517,25 @@ export async function getHistoricoEntradasSaidasItem(codigo: string, local: stri
     .select('data_movimento, quantidade, local')
     .eq('codigo', codTrim);
 
-  const mesMap: Record<string, { vendas: number, entradas: number }> = {};
-
-  // Processar vendas
+  let vendasTotal12M = 0;
   if (vendasData) {
     for (const v of vendasData) {
       if (locNormReq !== '' && normalizarLocal(v.loja) !== locNormReq) continue;
-      
-      const mes = String(v.mes_referencia).trim(); // Formato esperado 'MM/YYYY' ou 'YYYY-MM'
-      let mesFormatado = mes;
-      // Tentar padronizar se vier 'YYYY-MM'
-      if (mes.includes('-') && mes.length === 7) {
-        const parts = mes.split('-');
-        mesFormatado = `${parts[1]}/${parts[0]}`;
-      }
-
-      if (!mesMap[mesFormatado]) mesMap[mesFormatado] = { vendas: 0, entradas: 0 };
-      mesMap[mesFormatado].vendas += (Number(v.vendas) || 0);
+      const val = Number(v.vendas) || 0;
+      if (val > vendasTotal12M) vendasTotal12M = val; // Pega o maior valor de vendas para o item
     }
   }
 
-  // Processar entradas
+  // Como temos apenas o total de 12 meses, calculamos a média mensal
+  const mediaMensalSales = Math.round(vendasTotal12M / 12);
+
+  const entradasPorMes: Record<string, number> = {};
   if (entradasData) {
     for (const e of entradasData) {
       if (locNormReq !== '' && normalizarLocal(e.local) !== locNormReq) continue;
 
       const dataStr = String(e.data_movimento).trim();
-      let mesFormatado = '00/0000';
+      let mesFormatado = '';
       
       // Assumindo data_movimento como 'DD/MM/YYYY' ou 'YYYY-MM-DD'
       if (dataStr.includes('/')) {
@@ -558,36 +550,31 @@ export async function getHistoricoEntradasSaidasItem(codigo: string, local: stri
         }
       }
 
-      if (!mesMap[mesFormatado]) mesMap[mesFormatado] = { vendas: 0, entradas: 0 };
-      mesMap[mesFormatado].entradas += (Number(e.quantidade) || 0);
+      if (mesFormatado) {
+        if (!entradasPorMes[mesFormatado]) entradasPorMes[mesFormatado] = 0;
+        entradasPorMes[mesFormatado] += (Number(e.quantidade) || 0);
+      }
     }
   }
 
-  // Gerar array final ordenado por data
-  const result: HistoricoGraficoData[] = Object.keys(mesMap).map(mes => ({
-    mes,
-    vendas: mesMap[mes].vendas,
-    entradas: mesMap[mes].entradas,
-    mediaMensal: 0 // Será calculado abaixo
-  }));
-
-  // Ordenar cronologicamente: assumindo formato 'MM/YYYY'
-  result.sort((a, b) => {
-    const [ma, ya] = a.mes.split('/');
-    const [mb, yb] = b.mes.split('/');
-    const dateA = new Date(Number(ya), Number(ma) - 1);
-    const dateB = new Date(Number(yb), Number(mb) - 1);
-    return dateA.getTime() - dateB.getTime();
-  });
-
-  // Calcular média mensal de vendas até aquele mês (média acumulada) ou média fixa de todo período
-  // Vamos usar uma média fixa de todo o período retornado para servir como uma "linha base" ou "potencial"
-  const totalVendas = result.reduce((acc, item) => acc + item.vendas, 0);
-  const mediaFixa = result.length > 0 ? Math.round(totalVendas / result.length) : 0;
-
-  result.forEach(item => {
-    item.mediaMensal = mediaFixa;
-  });
+  // Gerar os últimos 12 meses a partir do mês atual
+  const result: HistoricoGraficoData[] = [];
+  const hoje = new Date();
+  
+  // Vamos voltar 11 meses e ir até o atual (totalizando 12 meses)
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+    const mStr = String(d.getMonth() + 1).padStart(2, '0');
+    const yStr = String(d.getFullYear());
+    const mesFormat = `${mStr}/${yStr}`;
+    
+    result.push({
+      mes: mesFormat,
+      vendas: mediaMensalSales,       // A venda plotada por mês será a média mensal (linha plana base)
+      entradas: entradasPorMes[mesFormat] || 0, // As entradas ocorrem apenas quando houve reposição exata
+      mediaMensal: mediaMensalSales
+    });
+  }
 
   return result;
 }
