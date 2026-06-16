@@ -148,8 +148,8 @@ export default function ConsultaProdutosPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-[#111827] rounded-2xl p-6 border border-slate-800 col-span-1 md:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+              <div className="bg-[#111827] rounded-2xl p-6 border border-slate-800 col-span-1 md:col-span-4">
                 <h3 className="text-2xl font-bold text-white mb-2">{produtoSelecionado.descricao}</h3>
                 <div className="flex flex-wrap items-center gap-4 text-slate-400 mt-4">
                   <span className="bg-slate-800 px-3 py-1 rounded-lg border border-slate-700">Cód: {produtoSelecionado.codigo}</span>
@@ -159,9 +159,33 @@ export default function ConsultaProdutosPage() {
               </div>
 
               <div className="bg-gradient-to-br from-blue-900/40 to-[#111827] rounded-2xl p-6 border border-blue-800/30 flex flex-col justify-center items-center text-center">
-                <Package className="text-blue-400 mb-2" size={32} />
-                <p className="text-sm text-blue-200 uppercase tracking-wider">Estoque Total Atual</p>
-                <p className="text-4xl font-black text-white mt-1">{produtoSelecionado.estoqueGeral + produtoSelecionado.estoqueLoja}</p>
+                <Package className="text-blue-400 mb-2" size={24} />
+                <p className="text-xs text-blue-200 uppercase tracking-wider">Estoque Atual</p>
+                <p className="text-3xl font-black text-white mt-1">{produtoSelecionado.estoqueGeral + produtoSelecionado.estoqueLoja}</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-sky-900/40 to-[#111827] rounded-2xl p-6 border border-sky-800/30 flex flex-col justify-center items-center text-center">
+                <TrendingUp className="text-sky-400 mb-2" size={24} />
+                <p className="text-xs text-sky-200 uppercase tracking-wider">Média Mensal</p>
+                <p className="text-3xl font-black text-white mt-1">
+                  {historicoGrafico.length > 0 ? historicoGrafico[0].mediaMensal : 0}
+                </p>
+              </div>
+
+              <div className="bg-gradient-to-br from-pink-900/40 to-[#111827] rounded-2xl p-6 border border-pink-800/30 flex flex-col justify-center items-center text-center">
+                <BarChart3 className="text-pink-400 mb-2" size={24} />
+                <p className="text-xs text-pink-200 uppercase tracking-wider">Saídas (Últ. Mês)</p>
+                <p className="text-3xl font-black text-white mt-1">
+                  {historicoGrafico.length > 0 ? historicoGrafico[historicoGrafico.length - 1].vendas : 0}
+                </p>
+              </div>
+
+              <div className="bg-gradient-to-br from-emerald-900/40 to-[#111827] rounded-2xl p-6 border border-emerald-800/30 flex flex-col justify-center items-center text-center">
+                <Box className="text-emerald-400 mb-2" size={24} />
+                <p className="text-xs text-emerald-200 uppercase tracking-wider">Entradas (Últ. Mês)</p>
+                <p className="text-3xl font-black text-white mt-1">
+                  {historicoGrafico.length > 0 ? historicoGrafico[historicoGrafico.length - 1].entradas : 0}
+                </p>
               </div>
             </div>
 
