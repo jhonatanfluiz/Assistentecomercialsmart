@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { getLocais, getItensEstoqueZerado, ItemZerado } from '@/actions/dashboard';
+import { getLocais, getItensEstoqueZerado, ItemZerado, getHistoricoEntradasSaidasItem, HistoricoGraficoData } from '@/actions/dashboard';
 import { gerarRelatorioRuptura, RelatorioRupturaData } from '@/actions/relatorioInteligente';
 import PrintButton from '@/components/PrintButton';
-import { AlertCircle, ArrowLeft, BrainCircuit, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { AlertCircle, ArrowLeft, BrainCircuit, AlertTriangle, ShieldAlert, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
+import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 export default function RelatorioRupturaPage() {
   const [locais, setLocais] = useState<string[]>([]);
@@ -17,6 +18,7 @@ export default function RelatorioRupturaPage() {
   const [loading, setLoading] = useState(true);
   const [gerando, setGerando] = useState(false);
   const [relatorio, setRelatorio] = useState<RelatorioRupturaData | null>(null);
+  const [historicoGrafico, setHistoricoGrafico] = useState<HistoricoGraficoData[]>([]);
 
   useEffect(() => {
     async function carregarFiltros() {
@@ -50,15 +52,19 @@ export default function RelatorioRupturaPage() {
       const [cod, loc] = itemSelecionado.split('|');
       const item = itensZerados.find(i => i.codigo === cod && i.local === loc);
       if (item) {
-        const resultado = await gerarRelatorioRuptura(
-          item.codigo,
-          item.descricao,
-          item.local,
-          item.dataUltimaEntrada,
-          item.qtdUltimaEntrada,
-          item.numeroPedidoEntrada || '-'
-        );
+        const [resultado, historico] = await Promise.all([
+          gerarRelatorioRuptura(
+            item.codigo,
+            item.descricao,
+            item.local,
+            item.dataUltimaEntrada,
+            item.qtdUltimaEntrada,
+            item.numeroPedidoEntrada || '-'
+          ),
+          getHistoricoEntradasSaidasItem(item.codigo, item.local)
+        ]);
         setRelatorio(resultado);
+        setHistoricoGrafico(historico);
       }
     } catch (e) {
       console.error(e);
@@ -173,6 +179,32 @@ export default function RelatorioRupturaPage() {
               "{relatorio.planoAcao}"
             </p>
           </div>
+
+          {historicoGrafico && historicoGrafico.length > 0 && (
+            <div className="bg-slate-800/50 print:bg-white rounded-2xl p-6 mb-10 border border-slate-700 print:border-slate-200">
+              <div className="flex items-center gap-3 mb-6">
+                <BarChart3 className="text-blue-400 print:text-blue-600" size={24} />
+                <h2 className="text-lg font-bold text-slate-100 print:text-black">Histórico: Entradas vs Saídas (12 Meses)</h2>
+              </div>
+              <div className="h-80 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={historicoGrafico} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                    <XAxis dataKey="mes" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc', borderRadius: '8px' }}
+                      itemStyle={{ color: '#e2e8f0' }}
+                    />
+                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                    <Bar dataKey="vendas" name="Vendas (Saídas)" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                    <Bar dataKey="entradas" name="Reposição (Entradas)" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                    <Line type="monotone" dataKey="mediaMensal" name="Média Mensal (Vendas)" stroke="#3b82f6" strokeWidth={2} dot={false} strokeDasharray="5 5" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 print:gap-4">
             <div className="space-y-6">

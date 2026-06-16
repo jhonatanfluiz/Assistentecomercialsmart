@@ -480,3 +480,114 @@ export async function getDetalhamentoRequisicoes(filtros?: DashboardFiltros): Pr
 
   return itens.sort((a, b) => b.requisicoes - a.requisicoes);
 }
+
+export type HistoricoGraficoData = {
+  mes: string; // Ex: '06/2026'
+  vendas: number;
+  entradas: number;
+  mediaMensal: number;
+};
+
+export async function getHistoricoEntradasSaidasItem(codigo: string, local: string): Promise<HistoricoGraficoData[]> {
+  const supabase = getSupabaseClient();
+  const codTrim = String(codigo).trim();
+
+  const normalizarLocal = (loc: string) => {
+    const l = String(loc || '').trim().toUpperCase();
+    if (l === 'CD' || l.includes('TAQUARI')) return 'CD_TAQUARI';
+    if (l === 'SJC' || l === '33-SJS') return 'SJC_SJS';
+    if (l.includes('ABDO')) return 'ABDO';
+    if (l.includes('MOOCA')) return 'MOOCA';
+    if (l.includes('SUZ')) return 'SUZ';
+    if (l.includes('SAM')) return 'SAM';
+    return l;
+  };
+
+  const locNormReq = normalizarLocal(local);
+
+  // Buscar vendas
+  const { data: vendasData } = await supabase
+    .from('historico_estoque_vendas')
+    .select('mes_referencia, vendas, loja')
+    .eq('codigo', codTrim);
+
+  // Buscar entradas
+  const { data: entradasData } = await supabase
+    .from('historico_entradas')
+    .select('data_movimento, quantidade, local')
+    .eq('codigo', codTrim);
+
+  const mesMap: Record<string, { vendas: number, entradas: number }> = {};
+
+  // Processar vendas
+  if (vendasData) {
+    for (const v of vendasData) {
+      if (locNormReq !== '' && normalizarLocal(v.loja) !== locNormReq) continue;
+      
+      const mes = String(v.mes_referencia).trim(); // Formato esperado 'MM/YYYY' ou 'YYYY-MM'
+      let mesFormatado = mes;
+      // Tentar padronizar se vier 'YYYY-MM'
+      if (mes.includes('-') && mes.length === 7) {
+        const parts = mes.split('-');
+        mesFormatado = `${parts[1]}/${parts[0]}`;
+      }
+
+      if (!mesMap[mesFormatado]) mesMap[mesFormatado] = { vendas: 0, entradas: 0 };
+      mesMap[mesFormatado].vendas += (Number(v.vendas) || 0);
+    }
+  }
+
+  // Processar entradas
+  if (entradasData) {
+    for (const e of entradasData) {
+      if (locNormReq !== '' && normalizarLocal(e.local) !== locNormReq) continue;
+
+      const dataStr = String(e.data_movimento).trim();
+      let mesFormatado = '00/0000';
+      
+      // Assumindo data_movimento como 'DD/MM/YYYY' ou 'YYYY-MM-DD'
+      if (dataStr.includes('/')) {
+        const parts = dataStr.split('/');
+        if (parts.length >= 3) {
+          mesFormatado = `${parts[1]}/${parts[2]}`; // MM/YYYY
+        }
+      } else if (dataStr.includes('-')) {
+        const parts = dataStr.split('-');
+        if (parts.length >= 3) {
+          mesFormatado = `${parts[1]}/${parts[0]}`; // MM/YYYY (de YYYY-MM-DD)
+        }
+      }
+
+      if (!mesMap[mesFormatado]) mesMap[mesFormatado] = { vendas: 0, entradas: 0 };
+      mesMap[mesFormatado].entradas += (Number(e.quantidade) || 0);
+    }
+  }
+
+  // Gerar array final ordenado por data
+  const result: HistoricoGraficoData[] = Object.keys(mesMap).map(mes => ({
+    mes,
+    vendas: mesMap[mes].vendas,
+    entradas: mesMap[mes].entradas,
+    mediaMensal: 0 // Será calculado abaixo
+  }));
+
+  // Ordenar cronologicamente: assumindo formato 'MM/YYYY'
+  result.sort((a, b) => {
+    const [ma, ya] = a.mes.split('/');
+    const [mb, yb] = b.mes.split('/');
+    const dateA = new Date(Number(ya), Number(ma) - 1);
+    const dateB = new Date(Number(yb), Number(mb) - 1);
+    return dateA.getTime() - dateB.getTime();
+  });
+
+  // Calcular média mensal de vendas até aquele mês (média acumulada) ou média fixa de todo período
+  // Vamos usar uma média fixa de todo o período retornado para servir como uma "linha base" ou "potencial"
+  const totalVendas = result.reduce((acc, item) => acc + item.vendas, 0);
+  const mediaFixa = result.length > 0 ? Math.round(totalVendas / result.length) : 0;
+
+  result.forEach(item => {
+    item.mediaMensal = mediaFixa;
+  });
+
+  return result;
+}
