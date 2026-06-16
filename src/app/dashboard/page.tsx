@@ -367,13 +367,16 @@ export default function Dashboard() {
 
         {/* CHART AREA */}
         {!loading && (
-          <div className="bg-[#111827]/80 backdrop-blur-2xl p-6 md:p-8 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden group">
+          <div 
+            onClick={() => setActiveDetail('Tendência vs Potencial')}
+            className="bg-[#111827]/80 backdrop-blur-2xl p-6 md:p-8 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden group cursor-pointer hover:border-blue-500/50 hover:shadow-blue-500/10 transition-all duration-300"
+          >
             {/* Ambient glow behind chart */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-blue-500/10 blur-[120px] rounded-full pointer-events-none transition-opacity duration-700 opacity-50 group-hover:opacity-100"></div>
             
             <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
               <div>
-                <h2 className="text-xl font-bold text-slate-100">Tendência vs Potencial Perdido</h2>
+                <h2 className="text-xl font-bold text-slate-100 group-hover:text-blue-400 transition-colors">Tendência vs Potencial Perdido</h2>
                 <p className="text-slate-400 text-sm mt-1">Comparativo de vendas realizadas contra o projetado pela IA.</p>
               </div>
               <div className="mt-4 sm:mt-0 flex items-center gap-4 text-xs font-medium">
