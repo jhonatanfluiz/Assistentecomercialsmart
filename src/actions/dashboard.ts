@@ -161,6 +161,7 @@ export type ItemZerado = {
   dataUltimaEntrada: string;
   qtdUltimaEntrada: number;
   local: string;
+  dataIdentificacao?: string;
 };
 
 function formatDataBR(isoDate: string) {
@@ -181,13 +182,12 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
   const supabase = getSupabaseClient();
   
   // 1. Busca os itens zerados na tabela de vendas
-  let queryVendas = supabase.from('historico_estoque_vendas')
-    .select('codigo, descricao, fabricante, vendas, estoque_geral, estoque_loja, loja');
-    
-  if (filtros?.fabricante && filtros.fabricante !== '') {
-    queryVendas = queryVendas.eq('fabricante', filtros.fabricante);
-  }
-  
+  let queryVendas = supabase
+    .from('historico_estoque_vendas')
+    .select('codigo, descricao, fabricante, vendas, loja, estoque_geral, estoque_loja, criado_em')
+    .neq('id', '00000000-0000-0000-0000-000000000000'); // apenas para forçar uma query
+
+  // Aplica os filtros de local se houver
   if (filtros?.local && filtros.local !== '') {
     queryVendas = queryVendas.eq('loja', filtros.local);
   }
@@ -261,7 +261,8 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
       vendasPeriodo: Number(item.vendas) || 0,
       dataUltimaEntrada: formatDataBR(entrada?.data || 'Sem registro'),
       qtdUltimaEntrada: entrada?.qtd || 0,
-      local: lojaOriginal || 'Desconhecido'
+      local: lojaOriginal || 'Desconhecido',
+      dataIdentificacao: formatDataBR(item.criado_em)
     };
   });
 
