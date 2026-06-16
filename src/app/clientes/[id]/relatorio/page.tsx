@@ -55,7 +55,8 @@ export default function RelatorioRupturaPage() {
           item.descricao,
           item.local,
           item.dataUltimaEntrada,
-          item.qtdUltimaEntrada
+          item.qtdUltimaEntrada,
+          item.numeroPedidoEntrada || '-'
         );
         setRelatorio(resultado);
       }
@@ -151,6 +152,10 @@ export default function RelatorioRupturaPage() {
               <div>
                 <p className="text-xs text-slate-500 print:text-slate-500 uppercase tracking-wider mb-1">Última Entrada</p>
                 <p className="text-xl font-bold text-emerald-400 print:text-emerald-700">{relatorio.ultimaEntrada}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 print:text-slate-500 uppercase tracking-wider mb-1">Nº do Pedido</p>
+                <p className="text-xl font-bold text-blue-400 print:text-blue-700">{relatorio.numeroPedidoEntrada}</p>
               </div>
               <div>
                 <p className="text-xs text-slate-500 print:text-slate-500 uppercase tracking-wider mb-1">Qtd. da Entrada</p>

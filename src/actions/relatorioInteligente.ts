@@ -74,6 +74,7 @@ export type RelatorioRupturaData = {
   local: string;
   ultimaEntrada: string;
   qtdUltimaEntrada: number;
+  numeroPedidoEntrada: string;
   planoAcao: string;
 }
 
@@ -82,13 +83,15 @@ export async function gerarRelatorioRuptura(
   descricao: string, 
   local: string, 
   ultimaEntrada: string, 
-  qtdUltimaEntrada: number
+  qtdUltimaEntrada: number,
+  numeroPedidoEntrada: string
 ): Promise<RelatorioRupturaData> {
   const data: Omit<RelatorioRupturaData, 'planoAcao'> = {
     item: `${codigo} - ${descricao}`,
     local,
     ultimaEntrada,
-    qtdUltimaEntrada
+    qtdUltimaEntrada,
+    numeroPedidoEntrada
   };
 
   try {

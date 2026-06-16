@@ -130,6 +130,7 @@ export type LinhaEntrada = {
   fornecedor: string;
   data_movimento: string;
   quantidade: number | null;
+  pedido?: string;
 };
 
 function parseDateBR(dateStr: string) {
@@ -175,6 +176,7 @@ export async function processarImportacaoEntradas(dados: LinhaEntrada[]) {
           fornecedor: String(linha.fornecedor || '').trim().toUpperCase(),
           data_movimento: dataMov,
           quantidade: qtd,
+          pedido: String(linha.pedido || '').trim(),
         });
       } else {
         // Se já tem entrada no mesmo dia para o mesmo produto, somamos as quantidades

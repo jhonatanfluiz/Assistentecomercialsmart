@@ -54,6 +54,7 @@ export default function ImportarPage() {
     { key: 'fornecedor', label: 'Origem Movimento', required: false },
     { key: 'data_movimento', label: 'Data Movimento', required: true },
     { key: 'quantidade', label: 'Quantidade', required: true },
+    { key: 'pedido', label: 'Nº do Pedido/Doc', required: false },
   ];
 
   const colunasAtuais = tipoImportacao === 'SAIDAS' ? colunasBancoSaidas : colunasBancoEntradas;

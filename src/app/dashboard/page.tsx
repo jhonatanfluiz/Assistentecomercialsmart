@@ -189,6 +189,7 @@ export default function Dashboard() {
                             <th className="px-4 py-3 font-medium text-amber-500">Data Zeramento</th>
                             <th className="px-4 py-3 font-medium text-right">Vendas no Período</th>
                             <th className="px-4 py-3 font-medium">Última Entrada</th>
+                            <th className="px-4 py-3 font-medium">Nº Pedido (Entrada)</th>
                             <th className="px-4 py-3 font-medium text-right">Qtd Entrada</th>
                             <th className="px-4 py-3 font-medium">Fornecedor</th>
                           </tr>
@@ -203,6 +204,7 @@ export default function Dashboard() {
                               <td className="px-4 py-3 text-amber-400 font-medium">{item.dataIdentificacao}</td>
                               <td className="px-4 py-3 text-right text-rose-400 font-bold">{item.vendasPeriodo}</td>
                               <td className="px-4 py-3">{item.dataUltimaEntrada}</td>
+                              <td className="px-4 py-3 text-blue-400">{item.numeroPedidoEntrada}</td>
                               <td className="px-4 py-3 text-right font-medium">{item.qtdUltimaEntrada > 0 ? item.qtdUltimaEntrada : '-'}</td>
                               <td className="px-4 py-3 text-slate-400">{item.fornecedor}</td>
                             </tr>

@@ -160,6 +160,7 @@ export type ItemZerado = {
   vendasPeriodo: number;
   dataUltimaEntrada: string;
   qtdUltimaEntrada: number;
+  numeroPedidoEntrada?: string;
   local: string;
   dataIdentificacao?: string;
 };
@@ -207,11 +208,11 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
   // 2. Busca o histórico de entradas para esses códigos
   const { data: dadosEntradas, error: errEntradas } = await supabase
     .from('historico_entradas')
-    .select('codigo, data_movimento, quantidade, fornecedor, local')
+    .select('codigo, data_movimento, quantidade, fornecedor, local, pedido')
     .in('codigo', codigos)
     .order('data_movimento', { ascending: false });
 
-  const entradasMap: Record<string, { data: string, qtd: number, fornecedor: string, local: string }> = {};
+  const entradasMap: Record<string, { data: string, qtd: number, fornecedor: string, local: string, pedido: string }> = {};
 
   // Função auxiliar para normalizar e mapear locais equivalentes
   const normalizarLocal = (loc: string) => {
@@ -237,7 +238,8 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
           data: ent.data_movimento, 
           qtd: Number(ent.quantidade) || 0,
           fornecedor: ent.fornecedor || 'Desconhecido',
-          local: ent.local || 'Desconhecido'
+          local: ent.local || 'Desconhecido',
+          pedido: ent.pedido || ''
         };
       }
     }
@@ -261,6 +263,7 @@ export async function getItensEstoqueZerado(filtros?: DashboardFiltros): Promise
       vendasPeriodo: Number(item.vendas) || 0,
       dataUltimaEntrada: formatDataBR(entrada?.data || 'Sem registro'),
       qtdUltimaEntrada: entrada?.qtd || 0,
+      numeroPedidoEntrada: entrada?.pedido || '-',
       local: lojaOriginal || 'Desconhecido',
       dataIdentificacao: formatDataBR(item.criado_em)
     };
