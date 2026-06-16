@@ -331,3 +331,152 @@ export async function getProdutosSemGiroDetalhamento(filtros?: DashboardFiltros)
     };
   }).sort((a, b) => b.totalEstoque - a.totalEstoque);
 }
+
+export type DetalhamentoGeral = {
+  codigo: string;
+  descricao: string;
+  fabricante: string;
+  vendas: number;
+  estoqueGeral: number;
+  estoqueLoja: number;
+  totalEstoque: number;
+  giro: number;
+  requisicoes: number;
+  local: string;
+};
+
+export async function getDetalhamentoEstoqueTotal(filtros?: DashboardFiltros): Promise<DetalhamentoGeral[]> {
+  const supabase = getSupabaseClient();
+  let query = supabase.from('historico_estoque_vendas').select('*');
+  if (filtros?.fabricante) query = query.eq('fabricante', filtros.fabricante);
+  if (filtros?.local) query = query.eq('loja', filtros.local);
+
+  const { data, error } = await query;
+  if (error || !data) return [];
+
+  const itens = data.map(item => {
+    const v = Number(item.vendas) || 0;
+    const eg = Number(item.estoque_geral) || 0;
+    const el = Number(item.estoque_loja) || 0;
+    const req = Number(item.requisicoes) || 0;
+    const tot = eg + el;
+    const giro = tot > 0 ? (v / tot) * 100 : 0;
+    
+    return {
+      codigo: item.codigo,
+      descricao: item.descricao || 'N/A',
+      fabricante: item.fabricante || 'N/A',
+      vendas: v,
+      estoqueGeral: eg,
+      estoqueLoja: el,
+      totalEstoque: tot,
+      giro: giro,
+      requisicoes: req,
+      local: item.loja || 'Desconhecido'
+    };
+  }).filter(i => i.totalEstoque > 0);
+
+  return itens.sort((a, b) => b.totalEstoque - a.totalEstoque);
+}
+
+export async function getDetalhamentoVolumeVendas(filtros?: DashboardFiltros): Promise<DetalhamentoGeral[]> {
+  const supabase = getSupabaseClient();
+  let query = supabase.from('historico_estoque_vendas').select('*');
+  if (filtros?.fabricante) query = query.eq('fabricante', filtros.fabricante);
+  if (filtros?.local) query = query.eq('loja', filtros.local);
+
+  const { data, error } = await query;
+  if (error || !data) return [];
+
+  const itens = data.map(item => {
+    const v = Number(item.vendas) || 0;
+    const eg = Number(item.estoque_geral) || 0;
+    const el = Number(item.estoque_loja) || 0;
+    const req = Number(item.requisicoes) || 0;
+    const tot = eg + el;
+    const giro = tot > 0 ? (v / tot) * 100 : 0;
+    
+    return {
+      codigo: item.codigo,
+      descricao: item.descricao || 'N/A',
+      fabricante: item.fabricante || 'N/A',
+      vendas: v,
+      estoqueGeral: eg,
+      estoqueLoja: el,
+      totalEstoque: tot,
+      giro: giro,
+      requisicoes: req,
+      local: item.loja || 'Desconhecido'
+    };
+  }).filter(i => i.vendas > 0);
+
+  return itens.sort((a, b) => b.vendas - a.vendas);
+}
+
+export async function getDetalhamentoGiroEstoque(filtros?: DashboardFiltros): Promise<DetalhamentoGeral[]> {
+  const supabase = getSupabaseClient();
+  let query = supabase.from('historico_estoque_vendas').select('*');
+  if (filtros?.fabricante) query = query.eq('fabricante', filtros.fabricante);
+  if (filtros?.local) query = query.eq('loja', filtros.local);
+
+  const { data, error } = await query;
+  if (error || !data) return [];
+
+  const itens = data.map(item => {
+    const v = Number(item.vendas) || 0;
+    const eg = Number(item.estoque_geral) || 0;
+    const el = Number(item.estoque_loja) || 0;
+    const req = Number(item.requisicoes) || 0;
+    const tot = eg + el;
+    const giro = tot > 0 ? (v / tot) * 100 : 0;
+    
+    return {
+      codigo: item.codigo,
+      descricao: item.descricao || 'N/A',
+      fabricante: item.fabricante || 'N/A',
+      vendas: v,
+      estoqueGeral: eg,
+      estoqueLoja: el,
+      totalEstoque: tot,
+      giro: giro,
+      requisicoes: req,
+      local: item.loja || 'Desconhecido'
+    };
+  }).filter(i => i.giro > 0);
+
+  return itens.sort((a, b) => b.giro - a.giro);
+}
+
+export async function getDetalhamentoRequisicoes(filtros?: DashboardFiltros): Promise<DetalhamentoGeral[]> {
+  const supabase = getSupabaseClient();
+  let query = supabase.from('historico_estoque_vendas').select('*');
+  if (filtros?.fabricante) query = query.eq('fabricante', filtros.fabricante);
+  if (filtros?.local) query = query.eq('loja', filtros.local);
+
+  const { data, error } = await query;
+  if (error || !data) return [];
+
+  const itens = data.map(item => {
+    const v = Number(item.vendas) || 0;
+    const eg = Number(item.estoque_geral) || 0;
+    const el = Number(item.estoque_loja) || 0;
+    const req = Number(item.requisicoes) || 0;
+    const tot = eg + el;
+    const giro = tot > 0 ? (v / tot) * 100 : 0;
+    
+    return {
+      codigo: item.codigo,
+      descricao: item.descricao || 'N/A',
+      fabricante: item.fabricante || 'N/A',
+      vendas: v,
+      estoqueGeral: eg,
+      estoqueLoja: el,
+      totalEstoque: tot,
+      giro: giro,
+      requisicoes: req,
+      local: item.loja || 'Desconhecido'
+    };
+  }).filter(i => i.requisicoes > 0);
+
+  return itens.sort((a, b) => b.requisicoes - a.requisicoes);
+}

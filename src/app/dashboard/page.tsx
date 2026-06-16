@@ -28,7 +28,22 @@ import {
   Legend, 
   ResponsiveContainer 
 } from 'recharts';
-import { getDashboardMetrics, getSalesTrendChart, getFabricantes, getLocais, getItensEstoqueZerado, getProdutosSemGiroDetalhamento, DashboardFiltros, ItemZerado, ItemSemGiro } from '@/actions/dashboard';
+import { 
+  getDashboardMetrics, 
+  getSalesTrendChart, 
+  getFabricantes, 
+  getLocais, 
+  getItensEstoqueZerado, 
+  getProdutosSemGiroDetalhamento, 
+  getDetalhamentoEstoqueTotal,
+  getDetalhamentoVolumeVendas,
+  getDetalhamentoGiroEstoque,
+  getDetalhamentoRequisicoes,
+  DashboardFiltros, 
+  ItemZerado, 
+  ItemSemGiro,
+  DetalhamentoGeral
+} from '@/actions/dashboard';
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<any>(null);
@@ -38,20 +53,29 @@ export default function Dashboard() {
   const [activeDetail, setActiveDetail] = useState<string | null>(null);
   const [fabricantesLista, setFabricantesLista] = useState<string[]>([]);
   const [locaisLista, setLocaisLista] = useState<string[]>([]);
+  
   const [itensZerados, setItensZerados] = useState<ItemZerado[]>([]);
   const [itensSemGiro, setItensSemGiro] = useState<ItemSemGiro[]>([]);
+  const [detalheEstoqueTotal, setDetalheEstoqueTotal] = useState<DetalhamentoGeral[]>([]);
+  const [detalheVendas, setDetalheVendas] = useState<DetalhamentoGeral[]>([]);
+  const [detalheGiro, setDetalheGiro] = useState<DetalhamentoGeral[]>([]);
+  const [detalheRequisicoes, setDetalheRequisicoes] = useState<DetalhamentoGeral[]>([]);
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       try {
-        const [m, c, f, l, z, sg] = await Promise.all([
+        const [m, c, f, l, z, sg, et, vv, ge, req] = await Promise.all([
           getDashboardMetrics(filtros),
           getSalesTrendChart(filtros),
           getFabricantes(),
           getLocais(),
           getItensEstoqueZerado(filtros),
-          getProdutosSemGiroDetalhamento(filtros)
+          getProdutosSemGiroDetalhamento(filtros),
+          getDetalhamentoEstoqueTotal(filtros),
+          getDetalhamentoVolumeVendas(filtros),
+          getDetalhamentoGiroEstoque(filtros),
+          getDetalhamentoRequisicoes(filtros)
         ]);
         setMetrics(m);
         setChartData(c);
@@ -59,6 +83,10 @@ export default function Dashboard() {
         setLocaisLista(l);
         setItensZerados(z);
         setItensSemGiro(sg);
+        setDetalheEstoqueTotal(et);
+        setDetalheVendas(vv);
+        setDetalheGiro(ge);
+        setDetalheRequisicoes(req);
       } catch (error) {
         console.error("Erro", error);
       }
@@ -255,6 +283,146 @@ export default function Dashboard() {
                       </table>
                     </div>
                   )}
+                </div>
+              ) : activeDetail === 'Estoque Total' ? (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <h3 className="text-xl font-bold text-slate-200 mb-6">Detalhamento: Estoque Total</h3>
+                  <div className="overflow-x-auto rounded-xl border border-slate-700">
+                    <table className="w-full text-sm text-left text-slate-300">
+                      <thead className="text-xs text-slate-400 uppercase bg-slate-800/50 border-b border-slate-700">
+                        <tr>
+                          <th className="px-4 py-3 font-medium">Local</th>
+                          <th className="px-4 py-3 font-medium">Código</th>
+                          <th className="px-4 py-3 font-medium">Descrição</th>
+                          <th className="px-4 py-3 font-medium">Fabricante</th>
+                          <th className="px-4 py-3 font-medium text-right text-blue-400">Total Estoque</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detalheEstoqueTotal.map((item, idx) => (
+                          <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+                            <td className="px-4 py-3 text-slate-300 font-semibold">{item.local}</td>
+                            <td className="px-4 py-3 text-slate-400">{item.codigo}</td>
+                            <td className="px-4 py-3 font-medium text-slate-200">{item.descricao}</td>
+                            <td className="px-4 py-3">{item.fabricante}</td>
+                            <td className="px-4 py-3 text-right font-bold text-blue-400">{item.totalEstoque}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : activeDetail === 'Volume de Vendas' ? (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <h3 className="text-xl font-bold text-slate-200 mb-6">Detalhamento: Volume de Vendas</h3>
+                  <div className="overflow-x-auto rounded-xl border border-slate-700">
+                    <table className="w-full text-sm text-left text-slate-300">
+                      <thead className="text-xs text-slate-400 uppercase bg-slate-800/50 border-b border-slate-700">
+                        <tr>
+                          <th className="px-4 py-3 font-medium">Local</th>
+                          <th className="px-4 py-3 font-medium">Código</th>
+                          <th className="px-4 py-3 font-medium">Descrição</th>
+                          <th className="px-4 py-3 font-medium">Fabricante</th>
+                          <th className="px-4 py-3 font-medium text-right text-emerald-400">Vendas</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detalheVendas.map((item, idx) => (
+                          <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+                            <td className="px-4 py-3 text-slate-300 font-semibold">{item.local}</td>
+                            <td className="px-4 py-3 text-slate-400">{item.codigo}</td>
+                            <td className="px-4 py-3 font-medium text-slate-200">{item.descricao}</td>
+                            <td className="px-4 py-3">{item.fabricante}</td>
+                            <td className="px-4 py-3 text-right font-bold text-emerald-400">{item.vendas}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : activeDetail === 'Giro de Estoque' ? (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <h3 className="text-xl font-bold text-slate-200 mb-6">Detalhamento: Giro de Estoque</h3>
+                  <div className="overflow-x-auto rounded-xl border border-slate-700">
+                    <table className="w-full text-sm text-left text-slate-300">
+                      <thead className="text-xs text-slate-400 uppercase bg-slate-800/50 border-b border-slate-700">
+                        <tr>
+                          <th className="px-4 py-3 font-medium">Local</th>
+                          <th className="px-4 py-3 font-medium">Código</th>
+                          <th className="px-4 py-3 font-medium">Descrição</th>
+                          <th className="px-4 py-3 font-medium text-right">Vendas</th>
+                          <th className="px-4 py-3 font-medium text-right">Estoque</th>
+                          <th className="px-4 py-3 font-medium text-right text-emerald-400">Giro (%)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detalheGiro.map((item, idx) => (
+                          <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+                            <td className="px-4 py-3 text-slate-300 font-semibold">{item.local}</td>
+                            <td className="px-4 py-3 text-slate-400">{item.codigo}</td>
+                            <td className="px-4 py-3 font-medium text-slate-200">{item.descricao}</td>
+                            <td className="px-4 py-3 text-right">{item.vendas}</td>
+                            <td className="px-4 py-3 text-right">{item.totalEstoque}</td>
+                            <td className="px-4 py-3 text-right font-bold text-emerald-400">{item.giro.toFixed(1)}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : activeDetail === 'Requisições' ? (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <h3 className="text-xl font-bold text-slate-200 mb-6">Detalhamento: Requisições Ativas</h3>
+                  <div className="overflow-x-auto rounded-xl border border-slate-700">
+                    <table className="w-full text-sm text-left text-slate-300">
+                      <thead className="text-xs text-slate-400 uppercase bg-slate-800/50 border-b border-slate-700">
+                        <tr>
+                          <th className="px-4 py-3 font-medium">Local</th>
+                          <th className="px-4 py-3 font-medium">Código</th>
+                          <th className="px-4 py-3 font-medium">Descrição</th>
+                          <th className="px-4 py-3 font-medium text-right text-purple-400">Requisições</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detalheRequisicoes.map((item, idx) => (
+                          <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+                            <td className="px-4 py-3 text-slate-300 font-semibold">{item.local}</td>
+                            <td className="px-4 py-3 text-slate-400">{item.codigo}</td>
+                            <td className="px-4 py-3 font-medium text-slate-200">{item.descricao}</td>
+                            <td className="px-4 py-3 text-right font-bold text-purple-400">{item.requisicoes}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : activeDetail === 'Tendência vs Potencial' ? (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <h3 className="text-xl font-bold text-slate-200 mb-6">Detalhamento: Tendência vs Potencial (Mês a Mês)</h3>
+                  <div className="overflow-x-auto rounded-xl border border-slate-700">
+                    <table className="w-full text-sm text-left text-slate-300">
+                      <thead className="text-xs text-slate-400 uppercase bg-slate-800/50 border-b border-slate-700">
+                        <tr>
+                          <th className="px-4 py-3 font-medium">Mês de Referência</th>
+                          <th className="px-4 py-3 font-medium text-right text-blue-400">Vendas Realizadas</th>
+                          <th className="px-4 py-3 font-medium text-right text-indigo-400">Potencial / Projetado</th>
+                          <th className="px-4 py-3 font-medium text-right text-slate-400">Diferença</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {chartData.map((item, idx) => (
+                          <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+                            <td className="px-4 py-3 font-medium text-slate-200">{item.name}</td>
+                            <td className="px-4 py-3 text-right font-bold text-blue-400">R$ {item.vendas.toLocaleString('pt-BR')}</td>
+                            <td className="px-4 py-3 text-right font-bold text-indigo-400">R$ {item.projetado.toLocaleString('pt-BR')}</td>
+                            <td className="px-4 py-3 text-right font-medium text-slate-400">
+                              R$ {(item.projetado - item.vendas).toLocaleString('pt-BR')}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
