@@ -197,7 +197,6 @@ export default function RelatorioRupturaPage() {
                       itemStyle={{ color: '#e2e8f0' }}
                     />
                     <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                    <Bar dataKey="vendas" name="Vendas (Saídas)" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={50} />
                     <Bar dataKey="entradas" name="Reposição (Entradas)" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={50} />
                     <Line type="monotone" dataKey="mediaMensal" name="Média Mensal (Vendas)" stroke="#3b82f6" strokeWidth={2} dot={false} strokeDasharray="5 5" />
                   </ComposedChart>
