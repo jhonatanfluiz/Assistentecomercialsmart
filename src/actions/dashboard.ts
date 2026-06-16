@@ -505,7 +505,7 @@ export async function getHistoricoEntradasSaidasItem(codigo: string, local: stri
 
   const locNormReq = normalizarLocal(local);
 
-  // Buscar vendas (O campo vendas contém as SAÍDAS dos últimos 12 MESES)
+  // Buscar vendas (O campo vendas conterá as SAÍDAS dos últimos 90 DIAS)
   const { data: vendasData } = await supabase
     .from('historico_estoque_vendas')
     .select('vendas, loja')
@@ -517,17 +517,17 @@ export async function getHistoricoEntradasSaidasItem(codigo: string, local: stri
     .select('data_movimento, quantidade, local')
     .eq('codigo', codTrim);
 
-  let vendasTotal12M = 0;
+  let vendasTotal90Dias = 0;
   if (vendasData) {
     for (const v of vendasData) {
       if (locNormReq !== '' && normalizarLocal(v.loja) !== locNormReq) continue;
       const val = Number(v.vendas) || 0;
-      if (val > vendasTotal12M) vendasTotal12M = val; // Pega o maior valor de vendas para o item
+      if (val > vendasTotal90Dias) vendasTotal90Dias = val; // Pega o maior valor (mais atualizado) de 90 dias
     }
   }
 
-  // Como temos apenas o total de 12 meses, calculamos a média mensal
-  const mediaMensalSales = Math.round(vendasTotal12M / 12);
+  // Como temos o total de 90 dias (3 meses), dividimos por 3 para achar a média mensal
+  const mediaMensalSales = Math.round(vendasTotal90Dias / 3);
 
   const entradasPorMes: Record<string, number> = {};
   if (entradasData) {
