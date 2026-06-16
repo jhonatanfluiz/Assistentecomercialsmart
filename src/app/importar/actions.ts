@@ -183,20 +183,32 @@ export async function processarImportacaoEntradas(dados: LinhaEntrada[]) {
       }
     }
 
-    const dadosParaInserir = Array.from(map.values());
+    const dadosLimpos = Array.from(map.values());
 
-    // Como as entradas não têm "mês de referência", a forma mais limpa de evitar duplicação 
-    // de reimportação sem apagar o histórico é apagar as entradas dos códigos contidos nesta planilha.
-    // Atenção: Isso assume que a planilha de entradas enviada contém sempre o retrato completo ou as entradas mais recentes.
-    // Vamos fazer isso em lotes se necessário, mas primeiro pegamos os códigos únicos
-    const codigosUnicos = Array.from(new Set(dadosParaInserir.map(d => d.codigo)));
+    const codigosUnicos = Array.from(new Set(dadosLimpos.map(d => d.codigo)));
     
+    let dadosParaInserir = dadosLimpos;
+
     if (codigosUnicos.length > 0) {
-      // Deleta as entradas antigas desses mesmos códigos para não ficar duplicando
-      await supabase
+      // Busca as entradas que já existem no banco para esses códigos
+      const { data: existentes } = await supabase
         .from('historico_entradas')
-        .delete()
+        .select('codigo, data_movimento, local')
         .in('codigo', codigosUnicos);
+
+      const chavesExistentes = new Set(
+        existentes?.map(e => `${e.codigo}_${e.data_movimento}_${e.local}`) || []
+      );
+
+      // Filtra para inserir apenas o que ainda NÃO existe no banco
+      dadosParaInserir = dadosLimpos.filter(d => {
+        const k = `${d.codigo}_${d.data_movimento}_${d.local}`;
+        return !chavesExistentes.has(k);
+      });
+    }
+
+    if (dadosParaInserir.length === 0) {
+      return { sucesso: true, mensagem: `A planilha já foi importada anteriormente. Nenhuma entrada nova foi adicionada para evitar duplicidade.` };
     }
 
     const { error } = await supabase
